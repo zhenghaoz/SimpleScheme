@@ -3,7 +3,7 @@
 
 /* namespace */
 
-#define EVAL_NAMESPACE_BEGIN	namespace eval {
+#define EVAL_NAMESPACE_BEGIN	namespace eva {
 #define EVAL_NAMESPACE_END		}
 
 /* debug option */
