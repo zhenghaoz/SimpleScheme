@@ -1,23 +1,49 @@
+#include <sstream>
 #include "variable.h"
 #include "exception.h"
 
 EVAL_NAMESPACE_BEGIN
 
-/* type names */
+/* primitive procedure */
 
+ostream &operator<<(ostream &out, const PrimitiveProcdeure &prim)
+{
+	if (*prim._namePtr == "")
+		out << "#<procedure>";
+	else
+		out << "#<procedure:" + *prim._namePtr + ">";
+	return out;
+}
+
+/* compound procedure */
+
+ostream &operator<<(ostream &out, const CompoundProcedure &comp)
+{
+	if (*comp._namePtr == "")
+		out << "#<procedure>";
+	else
+		out << "#<procedure:" + *comp._namePtr + ">";
+	return out;
+}
+
+/* variable */
+
+// static member variable
+#ifdef EVAL_DEBUG
 int Variable::_valueCreated = 0;
 int Variable::_valueDestroyed = 0;
-const char* Variable::_typeNames[] = { "null", "number", "symbol", "pair" };
+#endif
+const char* Variable::_typeNames[] = { "void", "null", "number", "symbol", "pair", "procedure", "procedure" };
 
-/* helper functions */
-
+// util functions
 std::ostream& operator<<(std::ostream& out, const Variable& var)
 {
 	switch (var._type) {
 		case Variable::NUMBER:
-			out << *var._intPtr;
+			out << *var._numPtr;
 			break;
 		case Variable::SYMBOL:
+		case Variable::STRING:
 			out << *var._strPtr;
 			break;
 		case Variable::PAIR:
@@ -25,8 +51,14 @@ std::ostream& operator<<(std::ostream& out, const Variable& var)
 			out << '(';
 			Variable::printList(out, var);
 			out << ')';
+			break;
+		case Variable::PRIM:
+			out << *var._primPtr;
+			break;
+		case Variable::COMP:
+			out << *var._compPtr;
 	}
-	return out; 
+	return out;
 }
 
 void Variable::swap(Variable &a, Variable &b)
@@ -40,8 +72,8 @@ void Variable::printList(std::ostream& out, const Variable &var)
 {
 	if (var._type != Variable::PAIR)
 		return;
-	const Variable &a = car(var);
-	const Variable &b = cdr(var);
+	const Variable &a = var.car();
+	const Variable &b = var.cdr();
 	out << a;
 	if (b._type == PAIR) {
 		out << ' ';
@@ -53,37 +85,77 @@ void Variable::printList(std::ostream& out, const Variable &var)
 	}
 }
 
-Variable Variable::operator&&(const Variable &b)
+// interface
+Variable::operator number() const
 {
-	if (_type == Variable::SYMBOL && *_strPtr == "false")
-		return VAR_FALSE;
-	if (b._type == Variable::SYMBOL && *b._strPtr == "false")
-		return VAR_FALSE;
-	return VAR_TRUE;
+	if (!isNumber())
+		throw SchemeException(string("variable: can't convert ") + toString() + " to number");
+	return *_numPtr;
 }
 
-/* public member functions */
-
-void Variable::requireType(std::string sender, Type type) const
+Variable::operator string() const
 {
-	if (_type != type)
-		throw SchemeException(sender + ": contract violation\n\
-			\texpected: " + _typeNames[type] + "\n\
-			\tgiven: " + "\n");
+	if (!isSymbol() && !isString())
+		throw SchemeException(string("variable: can't convert ") + toString() + " to string");
+	return *_strPtr;
 }
 
+Variable::operator CompoundProcedure() const
+{
+	if (!isComp())
+		throw SchemeException(string("variable: can't convert ") + toString() + " to compound procedure");
+	return *_compPtr;
+}
+
+Variable Variable::operator() (const Variable &var)
+{
+	if (!isPrim())
+		throw SchemeException(string("variable: ") + toString() + " isn't a primitive procedure.");
+	return (*_primPtr)(var);
+}
+
+void Variable::requireType(const std::string &caller, Type type) const
+{
+	if (_type != type) 
+		throw SchemeException(caller + ": contract violation\n\texpected: " + _typeNames[type] + "\n\tgiven: " + toString());
+}
+
+bool Variable::isEqual(const Variable &b) const
+{
+	if (_type != b._type)
+		return false;
+	switch (_type) {
+		case Variable::NUMBER:
+			return *_numPtr == *b._numPtr;
+		case Variable::SYMBOL:
+			return *_strPtr == *b._strPtr;
+		case Variable::PAIR:
+			return car().isEqual(b.car()) && cdr().isEqual(b.cdr());
+		default:
+			throw SchemeException(string("variable: ") + toString() + "is uncomparable.");
+	}	
+}
+
+// constructors
 Variable::Variable(const Variable &var): _type(var._type), _refCount(var._refCount)
 {
 	(*_refCount)++;
 	switch (var._type) {
 		case Variable::NUMBER:
-			_intPtr = var._intPtr;
+			_numPtr = var._numPtr;
 			break;
 		case Variable::SYMBOL:
+		case Variable::STRING:
 			_strPtr = var._strPtr;
 			break;
 		case Variable::PAIR:
 			_pairPtr = var._pairPtr;
+			break;
+		case Variable::PRIM:
+			_primPtr = var._primPtr;
+			break;
+		case Variable::COMP:
+			_compPtr = var._compPtr;
 	}
 }
 
@@ -99,7 +171,7 @@ Variable::~Variable()
 		delete _refCount;
 		switch (_type) {
 			case Variable::NUMBER:
-				delete _intPtr;
+				delete _numPtr;
 				VAL_DESTROYED;
 				break;
 			case Variable::SYMBOL:
@@ -113,122 +185,58 @@ Variable::~Variable()
 	}
 }
 
-/* variable operator */
+/* static member variable */
 
-Variable isNull(const Variable &var)
+void Environment::addVars(const Variable &vars, const Variable &vals)
 {
-	return var._type == Variable::NIL ? VAR_TRUE : VAR_FALSE;
+	for (Variable varIt = vars, valIt = vals; !varIt.isNull() && !valIt.isNull(); varIt = varIt.cdr(), valIt = valIt.cdr()) {
+		Variable var = varIt.car();
+		Variable val = valIt.car();
+		(*_envPtr)[std::string(var)] = val;
+	}
 }
 
-Variable isNumber(const Variable &var)
+Environment::Environment(const Variable &vars, const Variable &vals): 
+		_encloseEnvPtr(nullptr), _envPtr(std::make_shared<map>())
 {
-	return var._type == Variable::NUMBER ? VAR_TRUE : VAR_FALSE;
+	addVars(vars, vals);
 }
 
-Variable isSymbol(const Variable &var)
+Environment::Environment(const Variable &vars, const Variable &vals, const Environment &encloseEnv): 
+		_encloseEnvPtr(std::make_shared<Environment>(encloseEnv)), _envPtr(std::make_shared<map>())
 {
-	return var._type == Variable::SYMBOL ? VAR_TRUE : VAR_FALSE;
+	addVars(vars, vals);
 }
 
-Variable isPair(const Variable &var)
+Variable Environment::defineVariable(const Variable &var, const Variable &val)
 {
-	return var._type == Variable::PAIR ? VAR_TRUE : VAR_FALSE;
+	(*_envPtr)[string(var)] = val;
+	return VAR_VOID;
 }
 
-Variable isEqual(const Variable &a, const Variable &b)
+map::iterator Environment::findVar(const Variable &var)
 {
-	if (a._type != b._type)
-		return VAR_FALSE;
-	switch (a._type) {
-		case Variable::NUMBER:
-			return a == b;
-		case Variable::SYMBOL:
-			return *a._strPtr == *b._strPtr;
-		case Variable::PAIR:
-			return isEqual(car(a), car(b)) && isEqual(cdr(a), cdr(b));
-	}	
+	string str = string(var);
+	for (Environment *envIt = this; envIt; envIt = envIt->_encloseEnvPtr.get()) {
+		auto it = envIt->_envPtr->find(str);
+		if (it != envIt->_envPtr->cend())
+			return it;
+	}
+	throw SchemeException(str + ": variable not found\n");
 }
 
-Variable operator+(const Variable &a, const Variable &b)
+Variable Environment::assignVariable(const Variable &var, const Variable &val)
 {
-	a.requireType("+", Variable::NUMBER);
-	b.requireType("+", Variable::NUMBER);
-	return Variable(*a._intPtr + *b._intPtr);
+	auto it = findVar(var);
+	it->second = val;
+	return VAR_VOID;
 }
 
-Variable operator-(const Variable &a, const Variable &b)
+Variable Environment::lookupVariable(const Variable &var)
 {
-	a.requireType("-", Variable::NUMBER);
-	b.requireType("-", Variable::NUMBER);
-	return Variable(*a._intPtr - *b._intPtr);
+	auto it = findVar(var);
+	return it->second;
 }
 
-Variable operator*(const Variable &a, const Variable &b)
-{
-	a.requireType("*", Variable::NUMBER);
-	b.requireType("*", Variable::NUMBER);
-	return Variable(*a._intPtr * *b._intPtr);
-}
-
-Variable operator/(const Variable &a, const Variable &b)
-{
-	a.requireType("/", Variable::NUMBER);
-	b.requireType("/", Variable::NUMBER);
-	if (*b._intPtr == 0)
-		throw SchemeException("/: divide by zero");
-	return Variable(*a._intPtr / *b._intPtr);
-}
-
-Variable operator<(const Variable &a, const Variable &b)
-{
-	a.requireType("<", Variable::NUMBER);
-	b.requireType("<", Variable::NUMBER);
-	return *a._intPtr < *b._intPtr ? VAR_TRUE : VAR_FALSE;
-}
-
-Variable operator>(const Variable &a, const Variable &b)
-{
-	a.requireType(">", Variable::NUMBER);
-	b.requireType(">", Variable::NUMBER);
-	return *a._intPtr > *b._intPtr ? VAR_TRUE : VAR_FALSE;
-}
-
-Variable operator==(const Variable &a, const Variable &b)
-{
-	a.requireType("=", Variable::NUMBER);
-	b.requireType("=", Variable::NUMBER);
-	return *a._intPtr == *b._intPtr ? VAR_TRUE : VAR_FALSE;
-}
-
-Variable cons(const Variable &a, const Variable &b)
-{
-	return Variable(a, b);
-}
-
-Variable car(const Variable &var)
-{
-	var.requireType("car", Variable::PAIR);
-	return var._pairPtr->first;
-}
-
-Variable cdr(const Variable &var)
-{
-	var.requireType("cdr", Variable::PAIR);
-	return var._pairPtr->second;
-}
-
-Variable setCar(Variable pair, const Variable &var)
-{
-	pair.requireType("set-car!", Variable::PAIR);
-	pair._pairPtr->first = var;
-	return pair;
-}
-
-Variable setCdr(Variable pair, const Variable &var)
-{
-	pair.requireType("set-cdr!", Variable::PAIR);
-	pair._pairPtr->second = var;
-	return pair;
-}
 
 EVAL_NAMESPACE_END
