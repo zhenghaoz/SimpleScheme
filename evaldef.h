@@ -7,6 +7,6 @@
 #define EVAL_NAMESPACE_END		}
 
 /* debug option */
-#define EVAL_DEBUG
+/*#define EVAL_DEBUG*/
 
 #endif
