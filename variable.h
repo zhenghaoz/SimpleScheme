@@ -10,6 +10,7 @@
 #include <utility>
 #include <sstream>
 #include "evaldef.h"
+#include "exception.h"
 
 EVAL_NAMESPACE_BEGIN
 
@@ -32,14 +33,14 @@ using procedure = std::function<Variable(const Variable&)>;
 
 #ifdef EVAL_DEBUG
 
-#define VAL_CREATE	do { _valueCreated++; } while (0)
-#define VAL_DESTROYED	do { _valueDestroyed++; } while (0)
-#define VAL_DEBUG_STATE	do { std::clog << "[value] created: " << Variable::_valueCreated << " destroyed: " << Variable::_valueDestroyed << std::endl; } while(0)
+#define VAL_CREATED			do { _valueCreated++; } while (0)
+#define VAL_DESTROYED		do { _valueDestroyed++; VAL_DEBUG_STATE; } while (0)
+#define VAL_DEBUG_STATE		do { std::clog << "[value] created: " << Variable::_valueCreated << " destroyed: " << Variable::_valueDestroyed << std::endl; } while(0)
 
 #else
 
-#define VAL_CREATE	do {} while (0)
-#define VAL_DESTROYED	do {} while (0)
+#define VAL_CREATED			do {} while (0)
+#define VAL_DESTROYED		do {} while (0)
 
 #endif
 
@@ -51,10 +52,8 @@ class PrimitiveProcdeure
 	shared_ptr<string> _namePtr;
 	shared_ptr<procedure> _proc;
 public:
-	PrimitiveProcdeure(const string &name, const procedure &proc): 
-		_namePtr(std::make_shared<string>(name)), 
-		_proc(std::make_shared<procedure>(proc)) {}
-	inline Variable operator() (const Variable &args);
+	PrimitiveProcdeure(const string &name, const procedure &proc);
+	Variable operator() (const Variable &args);
 	string getName() const { return *_namePtr; }
 };
 
@@ -67,12 +66,16 @@ class CompoundProcedure
 	shared_ptr<Environment> _envPtr;
 	shared_ptr<Variable> _seqPtr, _argsPtr;
 public:
-	inline CompoundProcedure(const Variable &name, const Variable &args, const Variable &seq, const Environment &env);
-	inline CompoundProcedure(const Variable &args, const Variable &seq, const Environment &env);
-	inline Variable getSequence() const;
-	inline Variable getArguments() const;
-	inline Environment getEnvironmrnt() const;
+	CompoundProcedure(const Variable &name, const Variable &args, const Variable &seq, const Environment &env);
+	CompoundProcedure(const Variable &args, const Variable &seq, const Environment &env);
+	Variable getSequence() const;
+	Variable getArguments() const;
+	Environment getEnvironmrnt() const;
 };
+
+/* special variable */
+
+class SpecialVariable {};
 
 /* variable */
 
@@ -106,21 +109,25 @@ private:
 	static void printList(std::ostream& out, const Variable &var);
 public:
 	// constructors
-	Variable(): _type(NIL), _refCount(new int(1)) {}
-	Variable(number num, Type type = NUMBER): 
-		_numPtr(new number(num)), _type(type), _refCount(new int(1)) { VAL_CREATE; }
+	Variable(): Variable(SpecialVariable(), NIL) {}
+	Variable(const SpecialVariable &special, Type type): 
+		_voidPtr(nullptr), _type(type), _refCount(new int(1)) 
+	{ if (type != NIL && type != VOID) throw SchemeException("variable: special variable must be null or void"); }
+	Variable(number num): 
+		_numPtr(new number(num)), _type(NUMBER), _refCount(new int(1)) { VAL_CREATED; }
 	Variable(const string &str, Type type = SYMBOL): 
-		_strPtr(new string(str)), _type(type), _refCount(new int(1)) { VAL_CREATE; }
+		_strPtr(new string(str)), _type(type), _refCount(new int(1)) 
+	{ if (type != SYMBOL && type != STRING)	throw SchemeException("variable: variable from string must be string or symbol"); VAL_CREATED; }
 	Variable(const PrimitiveProcdeure &prim): 
-		_primPtr(new PrimitiveProcdeure(prim)), _type(PRIM), _refCount(new int(1)) {}
+		_primPtr(new PrimitiveProcdeure(prim)), _type(PRIM), _refCount(new int(1)) { VAL_CREATED; }
 	Variable(const Variable &name, const Variable &args, const Variable &seq, const Environment &env):
-		_compPtr(new CompoundProcedure(name, args, seq, env)), _type(COMP), _refCount(new int(1)) {}
+		_compPtr(new CompoundProcedure(name, args, seq, env)), _type(COMP), _refCount(new int(1)) { VAL_CREATED; }
 	Variable(const Variable &args, const Variable &seq, const Environment &env):
 		Variable(Variable(""), args, seq, env) {}
 	Variable(const Variable &a, const Variable &b): 
-		_pairPtr(new pair(a, b)), _type(PAIR), _refCount(new int(1)) { VAL_CREATE; }
-	Variable(const Variable &var);
-	Variable& operator=(Variable var);
+		_pairPtr(new pair(a, b)), _type(PAIR), _refCount(new int(1)) { VAL_CREATED; }
+	Variable(const Variable &var): _voidPtr(var._voidPtr), _type(var._type), _refCount(var._refCount) { (*_refCount)++; }
+	Variable& operator=(Variable var) { swap(*this, var); }
 	~Variable();
 	// interface
 	void requireType(const string &caller, Type type) const;
@@ -137,21 +144,21 @@ public:
 	bool isEqual(const string &str) const { return isSymbol() && *_strPtr == str; }
 	Variable car() const { requireType("car", PAIR); return _pairPtr->first; }
 	Variable cdr() const { requireType("cdr", PAIR); return _pairPtr->second; }
-	inline Variable setCar(const Variable &var);
-	inline Variable setCdr(const Variable &var);
-	explicit operator bool() { return _type != SYMBOL || *_strPtr != "false"; }
+	Variable setCar(const Variable &var);
+	Variable setCdr(const Variable &var);
+	explicit operator bool() const;
 	explicit operator number() const;
 	explicit operator string() const;
 	explicit operator CompoundProcedure() const;
-	Variable operator() (const Variable &var);
+	Variable operator() (const Variable &var) const;
 };
 
 /* constants */
 
 const Variable VAR_TRUE = Variable("true", Variable::SYMBOL);
 const Variable VAR_FALSE = Variable("false", Variable::SYMBOL);
-const Variable VAR_NULL = Variable();
-const Variable VAR_VOID = Variable(0, Variable::VOID);
+const Variable VAR_NULL = Variable(SpecialVariable(), Variable::NIL);
+const Variable VAR_VOID = Variable(SpecialVariable(), Variable::VOID);
 
 /* environment */
 
@@ -171,27 +178,70 @@ public:
 
 /* inline functions */
 
-Variable PrimitiveProcdeure::operator() (const Variable &args) { return (*_proc)(args); }
+inline PrimitiveProcdeure::PrimitiveProcdeure(const string &name, const procedure &proc): 
+	_namePtr(std::make_shared<string>(name)), 
+	_proc(std::make_shared<procedure>(proc)) {}
+inline Variable PrimitiveProcdeure::operator() (const Variable &args) { return (*_proc)(args); }
 
-CompoundProcedure::CompoundProcedure(const Variable &name, const Variable &args, const Variable &seq, const Environment &env):
+inline CompoundProcedure::CompoundProcedure(const Variable &name, const Variable &args, const Variable &seq, const Environment &env):
 	_namePtr(std::make_shared<string>(string(name))),
 	_argsPtr(std::make_shared<Variable>(args)), 
 	_seqPtr(std::make_shared<Variable>(seq)), 
 	_envPtr(std::make_shared<Environment>(env)) {}
-CompoundProcedure::CompoundProcedure(const Variable &args, const Variable &seq, const Environment &env):
+inline CompoundProcedure::CompoundProcedure(const Variable &args, const Variable &seq, const Environment &env):
 	CompoundProcedure(Variable(""), args, seq, env) {}
-Variable CompoundProcedure::getSequence() const { return *_seqPtr; }
-Variable CompoundProcedure::getArguments() const { return *_argsPtr; }
-Environment CompoundProcedure::getEnvironmrnt() const { return *_envPtr; }
+inline Variable CompoundProcedure::getSequence() const { return *_seqPtr; }
+inline Variable CompoundProcedure::getArguments() const { return *_argsPtr; }
+inline Environment CompoundProcedure::getEnvironmrnt() const { return *_envPtr; }
 
-Variable Variable::setCar(const Variable &var) 
+inline void Variable::requireType(const std::string &caller, Type type) const
+{
+	if (_type != type) 
+		throw SchemeException(caller + ": contract violation\n\texpected: " + _typeNames[type] + "\n\tgiven: " + toString());
+}
+
+inline Variable::operator bool() const 
+{ 
+	return _type != SYMBOL || *_strPtr != "false"; 
+}
+
+inline Variable::operator number() const
+{
+	if (!isNumber())
+		throw SchemeException(string("variable: can't convert ") + toString() + " to number");
+	return *_numPtr;
+}
+
+inline Variable::operator string() const
+{
+	if (!isSymbol() && !isString())
+		throw SchemeException(string("variable: can't convert ") + toString() + " to string");
+	return *_strPtr;
+}
+
+inline Variable::operator CompoundProcedure() const
+{
+	if (!isComp())
+		throw SchemeException(string("variable: can't convert ") + toString() + " to compound procedure");
+	return *_compPtr;
+}
+
+inline Variable Variable::operator() (const Variable &var) const
+{
+	if (!isPrim())
+		throw SchemeException(string("variable: ") + toString() + " isn't a primitive procedure.");
+	return (*_primPtr)(var);
+}
+
+
+inline Variable Variable::setCar(const Variable &var) 
 { 
 	requireType("set-car!", PAIR); 
 	_pairPtr->first = var; 
 	return VAR_VOID; 
 }
 
-Variable Variable::setCdr(const Variable &var)
+inline Variable Variable::setCdr(const Variable &var)
 { 
 	requireType("set-cdr!", PAIR); 
 	_pairPtr->second = var; 

@@ -86,39 +86,6 @@ void Variable::printList(std::ostream& out, const Variable &var)
 }
 
 // interface
-Variable::operator number() const
-{
-	if (!isNumber())
-		throw SchemeException(string("variable: can't convert ") + toString() + " to number");
-	return *_numPtr;
-}
-
-Variable::operator string() const
-{
-	if (!isSymbol() && !isString())
-		throw SchemeException(string("variable: can't convert ") + toString() + " to string");
-	return *_strPtr;
-}
-
-Variable::operator CompoundProcedure() const
-{
-	if (!isComp())
-		throw SchemeException(string("variable: can't convert ") + toString() + " to compound procedure");
-	return *_compPtr;
-}
-
-Variable Variable::operator() (const Variable &var)
-{
-	if (!isPrim())
-		throw SchemeException(string("variable: ") + toString() + " isn't a primitive procedure.");
-	return (*_primPtr)(var);
-}
-
-void Variable::requireType(const std::string &caller, Type type) const
-{
-	if (_type != type) 
-		throw SchemeException(caller + ": contract violation\n\texpected: " + _typeNames[type] + "\n\tgiven: " + toString());
-}
 
 bool Variable::isEqual(const Variable &b) const
 {
@@ -128,40 +95,15 @@ bool Variable::isEqual(const Variable &b) const
 		case Variable::NUMBER:
 			return *_numPtr == *b._numPtr;
 		case Variable::SYMBOL:
+		case Variable::STRING:
 			return *_strPtr == *b._strPtr;
 		case Variable::PAIR:
 			return car().isEqual(b.car()) && cdr().isEqual(b.cdr());
+		case Variable::NIL:
+			return _type == b._type;
 		default:
 			throw SchemeException(string("variable: ") + toString() + "is uncomparable.");
 	}	
-}
-
-// constructors
-Variable::Variable(const Variable &var): _type(var._type), _refCount(var._refCount)
-{
-	(*_refCount)++;
-	switch (var._type) {
-		case Variable::NUMBER:
-			_numPtr = var._numPtr;
-			break;
-		case Variable::SYMBOL:
-		case Variable::STRING:
-			_strPtr = var._strPtr;
-			break;
-		case Variable::PAIR:
-			_pairPtr = var._pairPtr;
-			break;
-		case Variable::PRIM:
-			_primPtr = var._primPtr;
-			break;
-		case Variable::COMP:
-			_compPtr = var._compPtr;
-	}
-}
-
-Variable& Variable::operator=(Variable var)
-{
-	swap(*this, var);
 }
 
 Variable::~Variable()
@@ -175,24 +117,33 @@ Variable::~Variable()
 				VAL_DESTROYED;
 				break;
 			case Variable::SYMBOL:
+			case Variable::STRING:
 				delete _strPtr;
 				VAL_DESTROYED;
 				break;
 			case Variable::PAIR:
 				delete _pairPtr;
 				VAL_DESTROYED;
+				break;
+			case Variable::PRIM:
+				delete _primPtr;
+				VAL_DESTROYED;
+				break;
+			case Variable::COMP:	/* circular reference problem */
+				delete _compPtr;
+				VAL_DESTROYED;
 		}
 	}
 }
 
-/* static member variable */
+/* environment */
 
 void Environment::addVars(const Variable &vars, const Variable &vals)
 {
 	for (Variable varIt = vars, valIt = vals; !varIt.isNull() && !valIt.isNull(); varIt = varIt.cdr(), valIt = valIt.cdr()) {
 		Variable var = varIt.car();
 		Variable val = valIt.car();
-		(*_envPtr)[std::string(var)] = val;
+		(*_envPtr)[string(var)] = val;
 	}
 }
 
@@ -216,13 +167,13 @@ Variable Environment::defineVariable(const Variable &var, const Variable &val)
 
 map::iterator Environment::findVar(const Variable &var)
 {
-	string str = string(var);
+	string str = static_cast<string>(var);
 	for (Environment *envIt = this; envIt; envIt = envIt->_encloseEnvPtr.get()) {
 		auto it = envIt->_envPtr->find(str);
 		if (it != envIt->_envPtr->cend())
 			return it;
 	}
-	throw SchemeException(str + ": variable not found\n");
+	throw SchemeException(str + ": variable not found");
 }
 
 Variable Environment::assignVariable(const Variable &var, const Variable &val)
