@@ -5,32 +5,43 @@
 
 EVAL_NAMESPACE_BEGIN
 
-bool isNumber(const std::string &str);
-Variable parse(const std::string &str, int &pos);
-Variable parseString(const std::string &str, int &pos);
-Variable parseList(const std::string &str, int &pos);
-Variable parseWord(const std::string &str, int &pos);
+/* declare */
 
-Variable parse(const std::string &str)
+bool isNumber(const std::string &str);
+Variable parse(istream &in);
+Variable parseString(istream &in);
+Variable parseList(istream &in);
+Variable parseWord(istream &in);
+
+/* variable stream */
+
+istream &operator>>(istream &in, Variable &var)
 {
-	int pos = 0;
-	return parse(str, pos);
+	var = parse(in);
+	return in;
 }
 
-Variable parse(const std::string &str, int &pos)
+/* parsers */
+
+// dispatcher
+Variable parse(istream &in)
 {
+	int ch = 0;
 	/* ignore space */
-	if (str[pos] == ' ')
-		pos++;
+	while (static_cast<char>(ch = in.peek()) == ' '
+		|| static_cast<char>(ch) == '\n')
+		in.get();
 	/* dispatch */
-	int len = str.length();
-	switch (str[pos]) {
+	switch (char(ch)) {
 		case '(':
-			return parseList(str, pos);
+			return parseList(in);
 		case '"':
-			return parseString(str, pos);
+			return parseString(in);
+		case '\'':
+			in.get();
+			return Variable(Variable("quote"), Variable(parse(in), VAR_NULL));
 		default:
-			return parseWord(str, pos);
+			return parseWord(in);
 	}
 }
 
@@ -48,30 +59,32 @@ bool isNumber(const std::string &str)
 	return !sgn || i > 1;
 }
 
-Variable parseString(const std::string &str, int &pos)
+// parse string
+Variable parseString(istream &in)
 {
-	pos++;
-	int start = pos;
-	while (str[pos] && str[pos] != '"')
-		pos++;
-	if (str[pos] == '\0')
-		throw SchemeException("parser: expect \"\n\tline: " + str + "\n\tposition: " + std::to_string(start-1) + "\n");
-	return Variable(str.substr(start, pos-start), Variable::STRING);
+	int ch = 0;
+	in.get();
+	string str;
+	while ((ch = in.peek()) != EOF && static_cast<char>(ch) != '"')
+		str.push_back(static_cast<char>(in.get()));
+	if (ch == EOF)
+		throw SchemeException("parser: expect \"");
+	return Variable(str, Variable::STRING);
 }
 
-Variable parseList(const std::string &str, int &pos)
+// parse list
+Variable parseList(istream &in)
 {
+	// get list items
 	std::stack<Variable> varStack;
-	int start = pos;
-	pos++;
-	while (str[pos] && str[pos] != ')') {
-		while (str[pos] && str[pos] == ' ')
-			pos++;
-		varStack.push(parse(str, pos));
-	}
-	if (str[pos] == '\0')
-		throw SchemeException("parser: expect )\n\tline: " + str + "\n\tposition: " + std::to_string(start) + "\n");
-	pos++;
+	int ch;
+	in.get();
+	while ((ch = in.peek()) != EOF && static_cast<char>(ch) != ')')
+		varStack.push(parse(in));
+	if (ch == EOF)
+		throw SchemeException("parser: expect )");
+	in.get();
+	// construct linked list
 	Variable list = VAR_NULL;
 	while (!varStack.empty()) {
 		list = Variable(varStack.top(), list);
@@ -80,15 +93,18 @@ Variable parseList(const std::string &str, int &pos)
 	return list;
 }
 
-Variable parseWord(const std::string &str, int &pos)
+// parse symbol and number
+Variable parseWord(istream &in)
 {
-	int start = pos;
-	while (str[pos] && str[pos] != ' ' && str[pos] != ')')
-		pos++;
-	int len = pos - start;
-	if (len == 0)
+	string word;
+	int ch = 0;
+	while ((ch = in.peek()) != EOF 
+		&& static_cast<char>(ch) != ' ' 
+		&& static_cast<char>(ch) != '\n'
+		&& static_cast<char>(ch) != ')')
+		word.push_back(static_cast<char>(in.get()));
+	if (word.empty())
 		return VAR_NULL;
-	std::string word = str.substr(start, len);
 	return isNumber(word) ? Variable(std::stoi(word)) : Variable(word);
 }
 
