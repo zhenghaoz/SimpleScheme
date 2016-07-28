@@ -2,6 +2,8 @@
 #include <stack>
 #include <string>
 #include <cmath>
+#include <list>
+#include <iostream>
 #include "evaluator.h"
 #include "variable.h"
 #include "exception.h"
@@ -28,7 +30,9 @@
 #define LAMBDA_ARGS(exp)		exp.cdr().car()
 #define LAMBDA_BODY(exp)		exp.cdr().cdr()
 #define IS_AND(exp)				TAGGED_LIST(exp, "and")
+#define AND_ARGS(exp)			exp.cdr()
 #define IS_OR(exp)				TAGGED_LIST(exp, "or")
+#define OR_ARGS(exp)			exp.cdr()
 #define IS_IF(exp)				TAGGED_LIST(exp, "if")
 #define IF_PRED(exp)			exp.cdr().car()
 #define IF_CON(exp)				exp.cdr().cdr().car()
@@ -54,6 +58,8 @@
 
 EVAL_NAMESPACE_BEGIN
 
+Variable evalAnd(const Variable &expr, Environment &env);
+Variable evalOr(const Variable &expr, Environment &env);
 Variable evalSeq(const Variable &expr, Environment &env);
 Variable evalCond(const Variable &expr, Environment &env);
 Variable evalLet(const Variable &expr, Environment &env);
@@ -129,6 +135,14 @@ std::vector<PrimitiveProcdeure> prims = {
 		return number(a) == number(b) ? VAR_TRUE : VAR_FALSE;
 	}),
 
+	PrimitiveProcdeure("remainder", [](const Variable &args)->Variable{
+		Variable a = args.car();
+		Variable b = args.cdr().car();
+		a.requireType("remainder", Variable::NUMBER);
+		b.requireType("remainder", Variable::NUMBER);
+		return number(a) % number(b);
+	}),
+
 	PrimitiveProcdeure("cons", [](const Variable& args)->Variable{
 		Variable a = args.car();
 		Variable b = args.cdr().car();
@@ -155,6 +169,17 @@ std::vector<PrimitiveProcdeure> prims = {
 		Variable pair = args.car();
 		Variable cdr = args.cdr().car();
 		return pair.setCdr(cdr);
+	}),
+
+	PrimitiveProcdeure("list", [](const Variable &args)->Variable{
+		return args;
+	}),
+
+	PrimitiveProcdeure("map", [](const Variable &args)->Variable{
+		Variable proc = args.car();
+		std::list<Variable> argss;
+		for (Variable it = args.cdr(); !it.isNull(); it = it.cdr())
+			argss.push_back(it.car());
 	})
 };
 
@@ -177,6 +202,10 @@ Variable eval(const Variable &expr, Environment &env)
 		return env.assignVariable(ASSIGNMENT_VAR(expr), eval(ASSIGNMENT_VAL(expr), env));
 	if (IS_SEQ(expr))
 		return evalSeq(SEQUENCE(expr), env);
+	if (IS_AND(expr))
+		return evalAnd(expr, env);
+	if (IS_OR(expr))
+		return evalOr(expr, env);
 	if (IS_IF(expr))
 		return eval(IF_PRED(expr), env) ? eval(IF_CON(expr), env) : eval(IF_ALTER(expr), env);
 	if (IS_COND(expr))
@@ -191,6 +220,23 @@ Variable eval(const Variable &expr, Environment &env)
 		return apply(APPLY_PROC(expr), eval(APPLY_ARGS(expr), env), env);
 	if (IS_APPLICATION(expr))
 		return apply(APPLICATION_NAME(expr), APPLICATION_ARGS(expr), env);
+	throw SchemeException(std::string("eval: can't evaluate ") + expr.toString());
+}
+
+Variable evalAnd(const Variable &expr, Environment &env)
+{
+	for (Variable it = AND_ARGS(expr); !it.isNull(); it = it.cdr())
+		if (!eval(it.car(), env))
+			return VAR_FALSE;
+	return VAR_TRUE;
+}
+
+Variable evalOr(const Variable &expr, Environment &env)
+{
+	for (Variable it = OR_ARGS(expr); !it.isNull(); it = it.cdr())
+		if (eval(it.car(), env))
+			return VAR_TRUE;
+	return VAR_FALSE;
 }
 
 Variable evalSeq(const Variable &expr, Environment &env)
@@ -242,6 +288,7 @@ Variable apply(const Variable &proc, const Variable &args, Environment &env)
 		Environment extendEnv = Environment(args, vals, comp.getEnvironmrnt());
 		return evalSeq(body, extendEnv);
 	}
+	throw SchemeException(std::string("eval: can't apply ") + proc.toString());
 }
 
 Environment setupEnvironment()
