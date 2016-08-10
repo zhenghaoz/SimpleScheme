@@ -9,6 +9,7 @@
 #include <map>
 #include <utility>
 #include <sstream>
+#include <random>
 #include "evaldef.h"
 #include "exception.h"
 
@@ -22,6 +23,9 @@ class Environment;
 /* alias */
 
 template <typename T> using shared_ptr = std::shared_ptr<T>;
+template <typename T> using vector = std::vector<T>;
+template <typename T> using uniform_int_distribution = std::uniform_int_distribution<T>;
+using default_random_engine = std::default_random_engine;
 using number = int;
 using pair = std::pair<Variable, Variable>;
 using ostream = std::ostream;
@@ -35,7 +39,9 @@ using procedure = std::function<Variable(const Variable&)>;
 
 #define VAL_CREATED			do { _valueCreated++; } while (0)
 #define VAL_DESTROYED		do { _valueDestroyed++; VAL_DEBUG_STATE; } while (0)
-#define VAL_DEBUG_STATE		do { std::clog << "[value] created: " << Variable::_valueCreated << " destroyed: " << Variable::_valueDestroyed << std::endl; } while(0)
+#define VAL_DEBUG_STATE		do { std::clog << "[value] created: " << Variable::_valueCreated\
+								<< " destroyed: " << Variable::_valueDestroyed\
+								<< " alive: " << Variable::_valueCreated - Variable::_valueDestroyed << std::endl; } while(0)
 
 #else
 
@@ -43,6 +49,33 @@ using procedure = std::function<Variable(const Variable&)>;
 #define VAL_DESTROYED		do {} while (0)
 
 #endif
+
+/* garbage collector */
+
+#define RANDOM_COLOR distribution(engine)
+
+class GarbageCollector
+{
+	static default_random_engine engine;
+	static uniform_int_distribution<int> distribution;
+	static vector<Environment> envs;
+	static vector<Variable> vals;
+	static int color;
+public:
+	static void addEnv(const Environment& env)
+	{
+		envs.push_back(env);
+	}
+
+	static void addVal(const Variable& val)
+	{
+		vals.push_back(val);
+		if (vals.size() > 3)
+			collect();
+	}
+
+	static void collect();
+};
 
 /* primitive procedure */
 
@@ -103,6 +136,9 @@ private:
 	};
 	int *_refCount;
 	Type _type;
+	// garbage collection
+	int *_tag;
+	bool *_beWatching;
 private:
 	// util function
 	static void swap(Variable &a, Variable &b);
@@ -121,12 +157,12 @@ public:
 	Variable(const PrimitiveProcdeure &prim): 
 		_primPtr(new PrimitiveProcdeure(prim)), _type(PRIM), _refCount(new int(1)) { VAL_CREATED; }
 	Variable(const Variable &name, const Variable &args, const Variable &seq, const Environment &env):
-		_compPtr(new CompoundProcedure(name, args, seq, env)), _type(COMP), _refCount(new int(1)) { VAL_CREATED; }
+		_compPtr(new CompoundProcedure(name, args, seq, env)), _type(COMP), _refCount(new int(1)), _tag(new int), _beWatching(new bool(false)) { VAL_CREATED; }
 	Variable(const Variable &args, const Variable &seq, const Environment &env):
 		Variable(Variable(""), args, seq, env) {}
 	Variable(const Variable &a, const Variable &b): 
-		_pairPtr(new pair(a, b)), _type(PAIR), _refCount(new int(1)) { VAL_CREATED; }
-	Variable(const Variable &var): _voidPtr(var._voidPtr), _type(var._type), _refCount(var._refCount) { (*_refCount)++; }
+		_pairPtr(new pair(a, b)), _type(PAIR), _refCount(new int(1)), _tag(new int), _beWatching(new bool(false)) { VAL_CREATED; }
+	Variable(const Variable &var): _voidPtr(var._voidPtr), _type(var._type), _refCount(var._refCount), _tag(var._tag), _beWatching(var._beWatching) { (*_refCount)++; }
 	Variable& operator=(Variable var) { swap(*this, var); }
 	~Variable();
 	// interface
@@ -151,6 +187,7 @@ public:
 	explicit operator string() const;
 	explicit operator CompoundProcedure() const;
 	Variable operator() (const Variable &var) const;
+	// garbage collector
 };
 
 /* constants */
@@ -174,6 +211,8 @@ public:
 	Variable assignVariable(const Variable &var, const Variable &val);
 	Variable defineVariable(const Variable &var, const Variable &val);
 	Variable lookupVariable(const Variable &var);
+	int useCount() { return _envPtr.use_count(); };
+	void access(int color);
 };
 
 /* inline functions */

@@ -73,6 +73,10 @@ std::vector<PrimitiveProcdeure> prims = {
 		return a.isEqual(b) ? VAR_TRUE : VAR_FALSE;
 	}),
 
+	PrimitiveProcdeure("null?", [](const Variable& args)->Variable{
+		return args.car().isNull() ? VAR_TRUE : VAR_FALSE;
+	}),
+
 	PrimitiveProcdeure("+", [](const Variable& args)->Variable{
 		number val = 0;
 		for (Variable it = args; !it.isNull(); it = it.cdr()) {

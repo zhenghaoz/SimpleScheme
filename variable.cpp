@@ -4,6 +4,19 @@
 
 EVAL_NAMESPACE_BEGIN
 
+/* garbage collector */
+
+default_random_engine GarbageCollector::engine;
+uniform_int_distribution<int> GarbageCollector::distribution;
+vector<Environment> GarbageCollector::envs = vector<Environment>();
+vector<Variable> GarbageCollector::vals = vector<Variable>();
+int GarbageCollector::color = 0;
+
+void GarbageCollector::collect()
+{
+	int color = RANDOM_COLOR;
+}
+
 /* primitive procedure */
 
 ostream &operator<<(ostream &out, const PrimitiveProcdeure &prim)
@@ -66,6 +79,8 @@ void Variable::swap(Variable &a, Variable &b)
 	std::swap(a._type, b._type);
 	std::swap(a._refCount, b._refCount);
 	std::swap(a._voidPtr, b._voidPtr);
+	std::swap(a._tag, b._tag);
+	std::swap(a._beWatching, b._beWatching);
 }
 
 void Variable::printList(std::ostream& out, const Variable &var)
@@ -123,6 +138,8 @@ Variable::~Variable()
 				break;
 			case Variable::PAIR:
 				delete _pairPtr;
+				delete _tag;
+				delete _beWatching;
 				VAL_DESTROYED;
 				break;
 			case Variable::PRIM:
@@ -131,6 +148,8 @@ Variable::~Variable()
 				break;
 			case Variable::COMP:	/* circular reference problem */
 				delete _compPtr;
+				delete _tag;
+				delete _beWatching;
 				VAL_DESTROYED;
 		}
 	}
@@ -151,6 +170,7 @@ Environment::Environment(const Variable &vars, const Variable &vals):
 		_encloseEnvPtr(nullptr), _envPtr(std::make_shared<map>())
 {
 	addVars(vars, vals);
+	GarbageCollector::addEnv(*this);
 }
 
 Environment::Environment(const Variable &vars, const Variable &vals, const Environment &encloseEnv): 
@@ -161,6 +181,10 @@ Environment::Environment(const Variable &vars, const Variable &vals, const Envir
 
 Variable Environment::defineVariable(const Variable &var, const Variable &val)
 {
+	// add deprecated value to watch list
+	auto it = _envPtr->find(static_cast<string>(var));
+	if (it != _envPtr->cend())
+		GarbageCollector::addVal(it->second);
 	(*_envPtr)[string(var)] = val;
 	return VAR_VOID;
 }
@@ -188,6 +212,5 @@ Variable Environment::lookupVariable(const Variable &var)
 	auto it = findVar(var);
 	return it->second;
 }
-
 
 EVAL_NAMESPACE_END

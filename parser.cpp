@@ -29,7 +29,9 @@ Variable parse(istream &in)
 	int ch = 0;
 	/* ignore space */
 	while (static_cast<char>(ch = in.peek()) == ' '
-		|| static_cast<char>(ch) == '\n')
+		|| static_cast<char>(ch) == '\n'
+		|| static_cast<char>(ch) == '\r'
+		|| static_cast<char>(ch) == '\t')
 		in.get();
 	/* dispatch */
 	switch (char(ch)) {
@@ -69,6 +71,7 @@ Variable parseString(istream &in)
 		str.push_back(static_cast<char>(in.get()));
 	if (ch == EOF)
 		throw SchemeException("parser: expect \"");
+	in.get();
 	return Variable(str, Variable::STRING);
 }
 
@@ -101,6 +104,7 @@ Variable parseWord(istream &in)
 	while ((ch = in.peek()) != EOF 
 		&& static_cast<char>(ch) != ' ' 
 		&& static_cast<char>(ch) != '\n'
+		&& static_cast<char>(ch) != '\r'
 		&& static_cast<char>(ch) != ')')
 		word.push_back(static_cast<char>(in.get()));
 	if (word.empty())
