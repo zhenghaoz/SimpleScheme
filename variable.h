@@ -58,20 +58,14 @@ class GarbageCollector
 {
 	static default_random_engine engine;
 	static uniform_int_distribution<int> distribution;
-	static vector<Environment> envs;
-	static vector<Variable> vals;
-	static int color;
+	static vector<Variable> _watchList;
+	static Environment _globalEnv;
+	static int _threshold;
 public:
-	static void addEnv(const Environment& env)
+	static void setGlobalEnvironment(const Environment& env);
+	static void addVar(const Variable& var)
 	{
-		envs.push_back(env);
-	}
-
-	static void addVal(const Variable& val)
-	{
-		vals.push_back(val);
-		if (vals.size() > 3)
-			collect();
+		_watchList.push_back(var);
 	}
 
 	static void collect();
@@ -104,6 +98,13 @@ public:
 	Variable getSequence() const;
 	Variable getArguments() const;
 	Environment getEnvironmrnt() const;
+	void finalize() 
+	{ 
+		_envPtr.reset(); 
+		_namePtr.reset(); 
+		_seqPtr.reset();
+		_argsPtr.reset();
+	}
 };
 
 /* special variable */
@@ -123,6 +124,7 @@ public:
 	static const char* _typeNames[];
 	enum Type { VOID, NIL, NUMBER, SYMBOL, STRING, PAIR, PRIM, COMP };
 	// output
+	friend GarbageCollector;
 	friend std::ostream& operator<<(std::ostream& out, const Variable& var);
 private:
 	// private member variable
@@ -159,7 +161,7 @@ public:
 	Variable(const Variable &name, const Variable &args, const Variable &seq, const Environment &env):
 		_compPtr(new CompoundProcedure(name, args, seq, env)), _type(COMP), _refCount(new int(1)), _tag(new int), _beWatching(new bool(false)) { VAL_CREATED; }
 	Variable(const Variable &args, const Variable &seq, const Environment &env):
-		Variable(Variable(""), args, seq, env) {}
+		Variable(Variable(""), args, seq, env) { }
 	Variable(const Variable &a, const Variable &b): 
 		_pairPtr(new pair(a, b)), _type(PAIR), _refCount(new int(1)), _tag(new int), _beWatching(new bool(false)) { VAL_CREATED; }
 	Variable(const Variable &var): _voidPtr(var._voidPtr), _type(var._type), _refCount(var._refCount), _tag(var._tag), _beWatching(var._beWatching) { (*_refCount)++; }
@@ -188,6 +190,8 @@ public:
 	explicit operator CompoundProcedure() const;
 	Variable operator() (const Variable &var) const;
 	// garbage collector
+	void setTag(int tag);
+	void finalize();
 };
 
 /* constants */
@@ -211,8 +215,7 @@ public:
 	Variable assignVariable(const Variable &var, const Variable &val);
 	Variable defineVariable(const Variable &var, const Variable &val);
 	Variable lookupVariable(const Variable &var);
-	int useCount() { return _envPtr.use_count(); };
-	void access(int color);
+	void setTag(int tag);
 };
 
 /* inline functions */

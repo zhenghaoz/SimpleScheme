@@ -298,8 +298,10 @@ Variable apply(const Variable &proc, const Variable &args, Environment &env)
 Environment setupEnvironment()
 {
 	Environment env = Environment();
+	GarbageCollector::setGlobalEnvironment(env);
 	env.defineVariable(std::string("true"), VAR_TRUE);
 	env.defineVariable(std::string("false"), VAR_FALSE);
+	env.defineVariable(std::string("null"), VAR_NULL);
 	for (const PrimitiveProcdeure &prim : prims)
 		env.defineVariable(prim.getName(), prim);
 	return env;

@@ -8,13 +8,26 @@ EVAL_NAMESPACE_BEGIN
 
 default_random_engine GarbageCollector::engine;
 uniform_int_distribution<int> GarbageCollector::distribution;
-vector<Environment> GarbageCollector::envs = vector<Environment>();
-vector<Variable> GarbageCollector::vals = vector<Variable>();
-int GarbageCollector::color = 0;
+vector<Variable> GarbageCollector::_watchList = vector<Variable>();
+Environment GarbageCollector::_globalEnv;
+int GarbageCollector::_threshold = 0;
+
+void GarbageCollector::setGlobalEnvironment(const Environment& env)
+{
+	_globalEnv = env;
+}
 
 void GarbageCollector::collect()
 {
-	int color = RANDOM_COLOR;
+	int tag = RANDOM_COLOR;
+	_globalEnv.setTag(tag);
+	vector<Variable> nWatchList;
+	for (Variable& var : _watchList)
+		if (*var._refCount > 1 && *var._tag != tag)
+			var.finalize();
+		else if (*var._refCount > 1)
+			nWatchList.push_back(var);
+	std::swap(_watchList, nWatchList);
 }
 
 /* primitive procedure */
@@ -152,6 +165,41 @@ Variable::~Variable()
 				delete _beWatching;
 				VAL_DESTROYED;
 		}
+	} else if ((_type == PAIR || _type == COMP) && *_beWatching == false) {
+		*_beWatching = true;
+		GarbageCollector::addVar(*this);
+	}
+}
+
+// garbage collection
+
+void Variable::setTag(int tag)
+{
+	// only PAIR and COMP need tag
+	if (_type != PAIR && _type != COMP)
+		return;
+	// prevent set tag again
+	if (*_tag == tag)
+		return;
+	// set tag
+	*_tag = tag;
+	if (_type == PAIR) {	// PAIR
+		car().setTag(tag);
+		cdr().setTag(tag);
+	} else {				// COMP
+		_compPtr->getSequence().setTag(tag);
+		_compPtr->getArguments().setTag(tag);
+		_compPtr->getEnvironmrnt().setTag(tag);
+	}
+}
+
+void Variable::finalize()
+{
+	if (_type == PAIR) {
+		setCar(VAR_NULL);
+		setCdr(VAR_NULL);
+	} else if (_type == COMP) {
+		_compPtr->finalize();
 	}
 }
 
@@ -170,7 +218,6 @@ Environment::Environment(const Variable &vars, const Variable &vals):
 		_encloseEnvPtr(nullptr), _envPtr(std::make_shared<map>())
 {
 	addVars(vars, vals);
-	GarbageCollector::addEnv(*this);
 }
 
 Environment::Environment(const Variable &vars, const Variable &vals, const Environment &encloseEnv): 
@@ -181,10 +228,6 @@ Environment::Environment(const Variable &vars, const Variable &vals, const Envir
 
 Variable Environment::defineVariable(const Variable &var, const Variable &val)
 {
-	// add deprecated value to watch list
-	auto it = _envPtr->find(static_cast<string>(var));
-	if (it != _envPtr->cend())
-		GarbageCollector::addVal(it->second);
 	(*_envPtr)[string(var)] = val;
 	return VAR_VOID;
 }
@@ -211,6 +254,12 @@ Variable Environment::lookupVariable(const Variable &var)
 {
 	auto it = findVar(var);
 	return it->second;
+}
+
+void Environment::setTag(int tag)
+{
+	for (auto it = _envPtr->begin(); it != _envPtr->end(); it++)
+		it->second.setTag(tag);
 }
 
 EVAL_NAMESPACE_END
