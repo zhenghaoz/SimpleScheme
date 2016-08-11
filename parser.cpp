@@ -1,5 +1,6 @@
 #include <string>
 #include <stack>
+#include <map>
 #include "parser.h"
 #include "exception.h"
 
@@ -12,6 +13,10 @@ Variable parse(istream &in);
 Variable parseString(istream &in);
 Variable parseList(istream &in);
 Variable parseWord(istream &in);
+
+/* symbol pool */
+
+static map _symbolPool;
 
 /* variable stream */
 
@@ -109,7 +114,13 @@ Variable parseWord(istream &in)
 		word.push_back(static_cast<char>(in.get()));
 	if (word.empty())
 		return VAR_NULL;
-	return isNumber(word) ? Variable(std::stoi(word)) : Variable(word);
+	// number
+	if (isNumber(word))
+		return Variable(std::stoi(word));
+	// symbol
+	if ( _symbolPool.find(word) == _symbolPool.end())
+		_symbolPool[word] = Variable(word);
+	return _symbolPool[word];
 }
 
 EVAL_NAMESPACE_END
