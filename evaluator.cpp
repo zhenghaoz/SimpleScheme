@@ -7,6 +7,7 @@
 #include "evaluator.h"
 #include "variable.h"
 #include "exception.h"
+#include "parser.h"
 
 #define TAGGED_LIST(exp, tag)	(exp.isPair() && exp.car().isEqual(tag))
 #define IS_SELF_EVALUATING(exp)	(exp.isNumber() || exp.isString())
@@ -147,6 +148,11 @@ std::vector<PrimitiveProcdeure> prims = {
 		return number(a) % number(b);
 	}),
 
+	PrimitiveProcdeure("not", [](const Variable &args)->Variable{
+		Variable a = args.car();
+		return a.isEqual("false") ? VAR_TRUE : VAR_FALSE;
+	}),
+
 	PrimitiveProcdeure("cons", [](const Variable& args)->Variable{
 		Variable a = args.car();
 		Variable b = args.cdr().car();
@@ -184,6 +190,10 @@ std::vector<PrimitiveProcdeure> prims = {
 		std::list<Variable> argss;
 		for (Variable it = args.cdr(); !it.isNull(); it = it.cdr())
 			argss.push_back(it.car());
+	}),
+
+	PrimitiveProcdeure("newline", [](const Variable &args)->Variable{
+		std::cout << std::endl;
 	})
 };
 
@@ -220,8 +230,6 @@ Variable eval(const Variable &expr, Environment &env)
 		return evalLet(expr, env);
 	if (IS_EVAL(expr))
 		return eval(eval(EVAL_EXP(expr), env), env);
-	if (IS_APPLY(expr))
-		return apply(APPLY_PROC(expr), eval(APPLY_ARGS(expr), env), env);
 	if (IS_APPLICATION(expr))
 		return apply(APPLICATION_NAME(expr), APPLICATION_ARGS(expr), env);
 	throw SchemeException(std::string("eval: can't evaluate ") + expr.toString());
@@ -266,7 +274,7 @@ Variable evalLet(const Variable &expr, Environment &env)
 	Environment extendEnv = Environment(VAR_NULL, VAR_NULL, env);
 	for (Variable bindings = LET_BINDINGS(expr); !bindings.isNull(); bindings = bindings.cdr()) {
 		Variable binding = bindings.car();
-		extendEnv.defineVariable(BINDING_VAR(binding), BINDING_VAL(binding));
+		extendEnv.defineVariable(BINDING_VAR(binding), eval(BINDING_VAL(binding), env));
 	}
 	return evalSeq(LET_BODY(expr), extendEnv);
 }
@@ -284,13 +292,25 @@ Variable apply(const Variable &proc, const Variable &args, Environment &env)
 		argStack.pop();
 	}
 	if (procEvaled.isPrim())
-		return procEvaled(vals);
+		// eval primitives
+		try {
+			return procEvaled(vals);
+		} catch (SchemeException e) {
+			e.addTrace(procEvaled.toString());
+			throw e;
+		}
 	if (procEvaled.isComp()) {
 		CompoundProcedure comp = CompoundProcedure(procEvaled);
 		Variable body = comp.getSequence();
 		Variable args = comp.getArguments();
 		Environment extendEnv = Environment(args, vals, comp.getEnvironmrnt());
-		return evalSeq(body, extendEnv);
+		// eval compound
+		try {
+			return evalSeq(body, extendEnv);
+		} catch (SchemeException e) {
+			e.addTrace(procEvaled.toString() + ":" + body.toString());
+			throw e;
+		}
 	}
 	throw SchemeException(std::string("eval: can't apply ") + proc.toString());
 }

@@ -15,15 +15,14 @@ int main(int argc, char const *argv[])
 	Environment env = setupEnvironment();
 	while (true) {
 		try {
-			cout << "> ";
 			Variable exp;
 			if (!(cin >> exp))
 				return EOF;
-			Variable val = eval(exp, env);
-			if (!val.isVoid())
-				cout << val << endl;
+				Variable val = eval(exp, env);
+				if (!val.isVoid())
+					cout << val << endl;
 		} catch (SchemeException e) {
-			cout << e.what() << endl;
+			e.printStack();
 		}
 		GarbageCollector::collect();
 	}
