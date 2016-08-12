@@ -4,6 +4,33 @@
 #include "parser.h"
 #include "exception.h"
 
+#define IS_NEWLINE(ch) (ch == '\r' || ch == '\n')
+#define IS_SPACE(ch) (ch == ' ' || ch == '\t' || IS_NEWLINE(ch))
+#define IS_WORD_BOUND(ch) (IS_SPACE(ch) || ch == ';' || ch == ')')
+
+#define REMOVE_SEMI_COMMENT(in) do {\
+	int ch = 0;\
+	while ((ch = in.peek()) != EOF && !IS_NEWLINE(static_cast<char>(ch)))\
+		in.get();\
+} while (0)
+
+#define REMOVE_SHARP_COMMENT(in) do {\
+	while (!in.eof() && !endOfSharpComment(in));\
+} while (0)
+
+#define REMOVE_SPACE(in) do {\
+	int ch = 0;\
+	while ((ch = in.peek()) != EOF) {\
+		if (IS_SPACE(static_cast<char>(ch)))\
+			in.get();\
+		else if (static_cast<char>(ch) == ';')\
+			REMOVE_SEMI_COMMENT(in);\
+		else if (startOfSharpComment(in))\
+			REMOVE_SHARP_COMMENT(in);\
+		else break;\
+	}\
+} while (0)
+
 EVAL_NAMESPACE_BEGIN
 
 /* declare */
@@ -13,6 +40,9 @@ Variable parse(istream &in);
 Variable parseString(istream &in);
 Variable parseList(istream &in);
 Variable parseWord(istream &in);
+void removeQuoteComment(istream &in);
+bool startOfSharpComment(istream &in);
+bool endOfSharpComment(istream &in);
 
 /* symbol pool */
 
@@ -31,15 +61,13 @@ istream &operator>>(istream &in, Variable &var)
 // dispatcher
 Variable parse(istream &in)
 {
-	int ch = 0;
-	/* ignore space */
-	while (static_cast<char>(ch = in.peek()) == ' '
-		|| static_cast<char>(ch) == '\n'
-		|| static_cast<char>(ch) == '\r'
-		|| static_cast<char>(ch) == '\t')
-		in.get();
+	/* remove space */
+	REMOVE_SPACE(in);
 	/* dispatch */
-	switch (char(ch)) {
+	switch (static_cast<char>(in.peek())) {
+		case ')':
+			in.get();
+			throw SchemeException("parser: expect (");
 		case '(':
 			return parseList(in);
 		case '"':
@@ -86,12 +114,15 @@ Variable parseList(istream &in)
 	// get list items
 	std::stack<Variable> varStack;
 	int ch;
-	in.get();
-	while ((ch = in.peek()) != EOF && static_cast<char>(ch) != ')')
+	in.get();	// remove (
+	REMOVE_SPACE(in);
+	while ((ch = in.peek()) != EOF && static_cast<char>(ch) != ')') {
 		varStack.push(parse(in));
+		REMOVE_SPACE(in);
+	}
 	if (ch == EOF)
 		throw SchemeException("parser: expect )");
-	in.get();
+	in.get();	// remove )
 	// construct linked list
 	Variable list = VAR_NULL;
 	while (!varStack.empty()) {
@@ -106,11 +137,7 @@ Variable parseWord(istream &in)
 {
 	string word;
 	int ch = 0;
-	while ((ch = in.peek()) != EOF 
-		&& static_cast<char>(ch) != ' ' 
-		&& static_cast<char>(ch) != '\n'
-		&& static_cast<char>(ch) != '\r'
-		&& static_cast<char>(ch) != ')')
+	while ((ch = in.peek()) != EOF && !IS_WORD_BOUND(static_cast<char>(ch)))
 		word.push_back(static_cast<char>(in.get()));
 	if (word.empty())
 		return VAR_NULL;
@@ -121,6 +148,34 @@ Variable parseWord(istream &in)
 	if ( _symbolPool.find(word) == _symbolPool.end())
 		_symbolPool[word] = Variable(word);
 	return _symbolPool[word];
+}
+
+// comment
+
+bool startOfSharpComment(istream &in)
+{
+	int ch = in.peek();
+	if (static_cast<char>(ch) != '#')
+		return false;
+	in.get();
+	if (static_cast<char>(ch = in.peek()) == '|') {
+		in.get();
+		return true;
+	}
+	in.putback('#');
+	return false;
+}
+
+bool endOfSharpComment(istream &in)
+{
+	int ch = in.get();
+	if (static_cast<char>(ch) != '|')
+		return false;
+	if (static_cast<char>(ch = in.peek()) == '#') {
+		in.get();
+		return true;
+	}
+	return false;
 }
 
 EVAL_NAMESPACE_END
