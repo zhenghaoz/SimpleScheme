@@ -1,5 +1,4 @@
 #include <string>
-#include <stack>
 #include <map>
 #include "parser.h"
 #include "exception.h"
@@ -98,38 +97,35 @@ bool isNumber(const std::string &str)
 Variable parseString(istream &in)
 {
 	int ch = 0;
-	in.get();
+	in.get();	// remove left "
 	string str;
 	while ((ch = in.peek()) != EOF && static_cast<char>(ch) != '"')
 		str.push_back(static_cast<char>(in.get()));
 	if (ch == EOF)
 		throw SchemeException("parser: expect \"");
-	in.get();
+	in.get();	// remove right "
 	return Variable(str, Variable::STRING);
 }
 
 // parse list
 Variable parseList(istream &in)
 {
-	// get list items
-	std::stack<Variable> varStack;
+	Variable head = Variable(VAR_NULL, VAR_NULL);
+	Variable tail = head;
 	int ch;
 	in.get();	// remove (
 	REMOVE_SPACE(in);
 	while ((ch = in.peek()) != EOF && static_cast<char>(ch) != ')') {
-		varStack.push(parse(in));
+		// add item to list
+		Variable ntail = Variable(parse(in), VAR_NULL);
+		tail.setCdr(ntail);
+		tail = ntail;
 		REMOVE_SPACE(in);
 	}
 	if (ch == EOF)
 		throw SchemeException("parser: expect )");
 	in.get();	// remove )
-	// construct linked list
-	Variable list = VAR_NULL;
-	while (!varStack.empty()) {
-		list = Variable(varStack.top(), list);
-		varStack.pop();
-	}
-	return list;
+	return head.cdr();
 }
 
 // parse symbol and number
@@ -157,12 +153,12 @@ bool startOfSharpComment(istream &in)
 	int ch = in.peek();
 	if (static_cast<char>(ch) != '#')
 		return false;
-	in.get();
+	in.get();		// remove #
 	if (static_cast<char>(ch = in.peek()) == '|') {
-		in.get();
+		in.get();	// remove |
 		return true;
 	}
-	in.putback('#');
+	in.putback('#');// putback #
 	return false;
 }
 
