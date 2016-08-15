@@ -16,11 +16,12 @@ public:
 	void printStack()
 	{
 		std::cout << _msg << std::endl;
-		if (!_trace.empty()) {
-			std::cout << "from" << std::endl;
-			for (const std::string &trace : _trace)
-				std::cout << "\t" << trace << std::endl;
-		}
+		int length = _trace.size();
+		for (int i = 0; i < length; i++)
+			if (i == 0)
+				std::cout << "\tfrom: " << _trace[i] << std::endl;
+			else
+				std::cout << "\t      " << _trace[i] << std::endl;
 	}
 };
 
