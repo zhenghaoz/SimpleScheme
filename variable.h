@@ -31,7 +31,7 @@ using pair = std::pair<Variable, Variable>;
 using ostream = std::ostream;
 using string = std::string;
 using map = std::map<string, Variable>;
-using procedure = std::function<Variable(const Variable&)>;
+using procedure = std::function<Variable(const Variable&, Environment&)>;
 
 /* dynamic object tracer */
 
@@ -52,22 +52,15 @@ using procedure = std::function<Variable(const Variable&)>;
 
 /* garbage collector */
 
-#define RANDOM_COLOR distribution(engine)
-
 class GarbageCollector
 {
 	static default_random_engine engine;
 	static uniform_int_distribution<int> distribution;
 	static vector<Variable> _watchList;
 	static Environment _globalEnv;
-	static int _threshold;
 public:
 	static void setGlobalEnvironment(const Environment& env);
-	static void addVar(const Variable& var)
-	{
-		_watchList.push_back(var);
-	}
-
+	static void addVar(const Variable& var) { _watchList.push_back(var); }
 	static void collect();
 };
 
@@ -80,7 +73,7 @@ class PrimitiveProcdeure
 	shared_ptr<procedure> _proc;
 public:
 	PrimitiveProcdeure(const string &name, const procedure &proc);
-	Variable operator() (const Variable &args);
+	Variable operator() (const Variable &args, Environment &env) const;
 	string getName() const { return *_namePtr; }
 };
 
@@ -123,7 +116,6 @@ public:
 	#endif
 	static const char* _typeNames[];
 	enum Type { VOID, NIL, NUMBER, SYMBOL, STRING, PAIR, PRIM, COMP };
-	// output
 	friend GarbageCollector;
 	friend std::ostream& operator<<(std::ostream& out, const Variable& var);
 private:
@@ -140,7 +132,6 @@ private:
 	Type _type;
 	// garbage collection
 	int *_tag;
-	bool *_beWatching;
 private:
 	// util function
 	static void swap(Variable &a, Variable &b);
@@ -159,12 +150,12 @@ public:
 	Variable(const PrimitiveProcdeure &prim): 
 		_primPtr(new PrimitiveProcdeure(prim)), _type(PRIM), _refCount(new int(1)) { VAL_CREATED; }
 	Variable(const Variable &name, const Variable &args, const Variable &seq, const Environment &env):
-		_compPtr(new CompoundProcedure(name, args, seq, env)), _type(COMP), _refCount(new int(1)), _tag(new int), _beWatching(new bool(false)) { VAL_CREATED; }
+		_compPtr(new CompoundProcedure(name, args, seq, env)), _type(COMP), _refCount(new int(1)), _tag(new int) { VAL_CREATED; GarbageCollector::addVar(*this); }
 	Variable(const Variable &args, const Variable &seq, const Environment &env):
 		Variable(Variable(""), args, seq, env) { }
 	Variable(const Variable &a, const Variable &b): 
-		_pairPtr(new pair(a, b)), _type(PAIR), _refCount(new int(1)), _tag(new int), _beWatching(new bool(false)) { VAL_CREATED; }
-	Variable(const Variable &var): _voidPtr(var._voidPtr), _type(var._type), _refCount(var._refCount), _tag(var._tag), _beWatching(var._beWatching) { (*_refCount)++; }
+		_pairPtr(new pair(a, b)), _type(PAIR), _refCount(new int(1)), _tag(new int) { VAL_CREATED; GarbageCollector::addVar(*this); }
+	Variable(const Variable &var): _voidPtr(var._voidPtr), _type(var._type), _refCount(var._refCount), _tag(var._tag) { (*_refCount)++; }
 	Variable& operator=(Variable var) { swap(*this, var); }
 	~Variable();
 	// interface
@@ -188,7 +179,7 @@ public:
 	explicit operator number() const;
 	explicit operator string() const;
 	explicit operator CompoundProcedure() const;
-	Variable operator() (const Variable &var) const;
+	Variable operator() (const Variable &var, Environment &env) const;
 	// garbage collector
 	void setTag(int tag);
 	void finalize();
@@ -216,6 +207,7 @@ public:
 	Variable defineVariable(const Variable &var, const Variable &val);
 	Variable lookupVariable(const Variable &var);
 	void setTag(int tag);
+	void finalize();
 };
 
 /* inline functions */
@@ -223,7 +215,8 @@ public:
 inline PrimitiveProcdeure::PrimitiveProcdeure(const string &name, const procedure &proc): 
 	_namePtr(std::make_shared<string>(name)), 
 	_proc(std::make_shared<procedure>(proc)) {}
-inline Variable PrimitiveProcdeure::operator() (const Variable &args) { return (*_proc)(args); }
+inline Variable PrimitiveProcdeure::operator() (const Variable &args, Environment &env) const
+{ return (*_proc)(args, env); }
 
 inline CompoundProcedure::CompoundProcedure(const Variable &name, const Variable &args, const Variable &seq, const Environment &env):
 	_namePtr(std::make_shared<string>(string(name))),
@@ -268,13 +261,12 @@ inline Variable::operator CompoundProcedure() const
 	return *_compPtr;
 }
 
-inline Variable Variable::operator() (const Variable &var) const
+inline Variable Variable::operator() (const Variable &var, Environment &env) const
 {
 	if (!isPrim())
 		throw SchemeException(string("variable: ") + toString() + " isn't a primitive procedure.");
-	return (*_primPtr)(var);
+	return (*_primPtr)(var, env);
 }
-
 
 inline Variable Variable::setCar(const Variable &var) 
 { 

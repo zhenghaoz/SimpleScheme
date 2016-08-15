@@ -10,7 +10,6 @@ default_random_engine GarbageCollector::engine;
 uniform_int_distribution<int> GarbageCollector::distribution;
 vector<Variable> GarbageCollector::_watchList = vector<Variable>();
 Environment GarbageCollector::_globalEnv;
-int GarbageCollector::_threshold = 0;
 
 void GarbageCollector::setGlobalEnvironment(const Environment& env)
 {
@@ -19,7 +18,7 @@ void GarbageCollector::setGlobalEnvironment(const Environment& env)
 
 void GarbageCollector::collect()
 {
-	int tag = RANDOM_COLOR;
+	int tag = distribution(engine);
 	_globalEnv.setTag(tag);
 	vector<Variable> nWatchList;
 	for (Variable& var : _watchList)
@@ -59,7 +58,7 @@ ostream &operator<<(ostream &out, const CompoundProcedure &comp)
 int Variable::_valueCreated = 0;
 int Variable::_valueDestroyed = 0;
 #endif
-const char* Variable::_typeNames[] = { "void", "null", "number", "symbol", "pair", "procedure", "procedure" };
+const char* Variable::_typeNames[] = { "void", "null", "number", "string", "symbol", "pair", "procedure", "procedure" };
 
 // util functions
 std::ostream& operator<<(std::ostream& out, const Variable& var)
@@ -93,7 +92,6 @@ void Variable::swap(Variable &a, Variable &b)
 	std::swap(a._refCount, b._refCount);
 	std::swap(a._voidPtr, b._voidPtr);
 	std::swap(a._tag, b._tag);
-	std::swap(a._beWatching, b._beWatching);
 }
 
 void Variable::printList(std::ostream& out, const Variable &var)
@@ -103,12 +101,12 @@ void Variable::printList(std::ostream& out, const Variable &var)
 	const Variable &a = var.car();
 	const Variable &b = var.cdr();
 	out << a;
-	if (b._type == PAIR) {
+	if (b._type == PAIR) {		// print item
 		out << ' ';
 		printList(out, b);
-	} else if (b._type == NIL) {
+	} else if (b._type == NIL) {// reach the end of list
 		return;
-	} else {
+	} else {					// not a list
 		out << " . " << b;
 	}
 }
@@ -152,22 +150,17 @@ Variable::~Variable()
 			case Variable::PAIR:
 				delete _pairPtr;
 				delete _tag;
-				delete _beWatching;
 				VAL_DESTROYED;
 				break;
 			case Variable::PRIM:
 				delete _primPtr;
 				VAL_DESTROYED;
 				break;
-			case Variable::COMP:	/* circular reference problem */
+			case Variable::COMP:
 				delete _compPtr;
 				delete _tag;
-				delete _beWatching;
 				VAL_DESTROYED;
 		}
-	} else if ((_type == PAIR || _type == COMP) && *_beWatching == false) {
-		*_beWatching = true;
-		GarbageCollector::addVar(*this);
 	}
 }
 
@@ -260,6 +253,12 @@ void Environment::setTag(int tag)
 {
 	for (auto it = _envPtr->begin(); it != _envPtr->end(); it++)
 		it->second.setTag(tag);
+}
+
+void Environment::finalize()
+{
+	for (auto it = _envPtr->begin(); it != _envPtr->end(); it++)
+		it->second = VAR_NULL;
 }
 
 EVAL_NAMESPACE_END
