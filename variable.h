@@ -11,7 +11,7 @@
 #include <sstream>
 #include <random>
 #include "evaldef.h"
-#include "exception.h"
+#include "exception.hpp"
 
 EVAL_NAMESPACE_BEGIN
 
@@ -25,12 +25,12 @@ class Environment;
 template <typename T> using shared_ptr = std::shared_ptr<T>;
 template <typename T> using vector = std::vector<T>;
 template <typename T> using uniform_int_distribution = std::uniform_int_distribution<T>;
+template <typename K, typename V> using map = std::map<K, V>;
 using default_random_engine = std::default_random_engine;
 using number = int;
 using pair = std::pair<Variable, Variable>;
 using ostream = std::ostream;
 using string = std::string;
-using map = std::map<string, Variable>;
 using procedure = std::function<Variable(const Variable&, Environment&)>;
 
 /* dynamic object tracer */
@@ -60,7 +60,7 @@ class GarbageCollector
 	static Environment _globalEnv;
 public:
 	static void setGlobalEnvironment(const Environment& env);
-	static void addVar(const Variable& var) { _watchList.push_back(var); }
+	static void addVar(const Variable& var);
 	static void collect();
 };
 
@@ -74,7 +74,7 @@ class PrimitiveProcdeure
 public:
 	PrimitiveProcdeure(const string &name, const procedure &proc);
 	Variable operator() (const Variable &args, Environment &env) const;
-	string getName() const { return *_namePtr; }
+	string getName() const;
 };
 
 /* compound procedure */
@@ -91,13 +91,7 @@ public:
 	Variable getSequence() const;
 	Variable getArguments() const;
 	Environment getEnvironmrnt() const;
-	void finalize() 
-	{ 
-		_envPtr.reset(); 
-		_namePtr.reset(); 
-		_seqPtr.reset();
-		_argsPtr.reset();
-	}
+	void finalize();
 };
 
 /* special variable */
@@ -133,7 +127,6 @@ private:
 	// garbage collection
 	int *_tag;
 private:
-	// util function
 	static void swap(Variable &a, Variable &b);
 	static void printList(std::ostream& out, const Variable &var);
 public:
@@ -197,9 +190,9 @@ const Variable VAR_VOID = Variable(SpecialVariable(), Variable::VOID);
 class Environment
 {
 	shared_ptr<Environment> _encloseEnvPtr;
-	shared_ptr<map> _envPtr;
+	shared_ptr<map<string, Variable>> _envPtr;
 	void addVars(const Variable &vars, const Variable &vals);
-	map::iterator findVar(const Variable &var);
+	map<string, Variable>::iterator findVar(const Variable &var);
 public:
 	Environment(const Variable &vars = VAR_NULL, const Variable &vals = VAR_NULL);
 	Environment(const Variable &vars, const Variable &vals, const Environment &encloseEnv);
@@ -209,78 +202,6 @@ public:
 	void setTag(int tag);
 	void finalize();
 };
-
-/* inline functions */
-
-inline PrimitiveProcdeure::PrimitiveProcdeure(const string &name, const procedure &proc): 
-	_namePtr(std::make_shared<string>(name)), 
-	_proc(std::make_shared<procedure>(proc)) {}
-inline Variable PrimitiveProcdeure::operator() (const Variable &args, Environment &env) const
-{ return (*_proc)(args, env); }
-
-inline CompoundProcedure::CompoundProcedure(const Variable &name, const Variable &args, const Variable &seq, const Environment &env):
-	_namePtr(std::make_shared<string>(string(name))),
-	_argsPtr(std::make_shared<Variable>(args)), 
-	_seqPtr(std::make_shared<Variable>(seq)), 
-	_envPtr(std::make_shared<Environment>(env)) {}
-inline CompoundProcedure::CompoundProcedure(const Variable &args, const Variable &seq, const Environment &env):
-	CompoundProcedure(Variable(""), args, seq, env) {}
-inline Variable CompoundProcedure::getSequence() const { return *_seqPtr; }
-inline Variable CompoundProcedure::getArguments() const { return *_argsPtr; }
-inline Environment CompoundProcedure::getEnvironmrnt() const { return *_envPtr; }
-
-inline void Variable::requireType(const std::string &caller, Type type) const
-{
-	if (_type != type) 
-		throw SchemeException(caller + ": contract violation\n\texpected: " + _typeNames[type] + "\n\tgiven: " + toString());
-}
-
-inline Variable::operator bool() const 
-{ 
-	return _type != SYMBOL || *_strPtr != "false"; 
-}
-
-inline Variable::operator number() const
-{
-	if (!isNumber())
-		throw SchemeException(string("variable: can't convert ") + toString() + " to number");
-	return *_numPtr;
-}
-
-inline Variable::operator string() const
-{
-	if (!isSymbol() && !isString())
-		throw SchemeException(string("variable: can't convert ") + toString() + " to string");
-	return *_strPtr;
-}
-
-inline Variable::operator CompoundProcedure() const
-{
-	if (!isComp())
-		throw SchemeException(string("variable: can't convert ") + toString() + " to compound procedure");
-	return *_compPtr;
-}
-
-inline Variable Variable::operator() (const Variable &var, Environment &env) const
-{
-	if (!isPrim())
-		throw SchemeException(string("variable: ") + toString() + " isn't a primitive procedure.");
-	return (*_primPtr)(var, env);
-}
-
-inline Variable Variable::setCar(const Variable &var) 
-{ 
-	requireType("set-car!", PAIR); 
-	_pairPtr->first = var; 
-	return VAR_VOID; 
-}
-
-inline Variable Variable::setCdr(const Variable &var)
-{ 
-	requireType("set-cdr!", PAIR); 
-	_pairPtr->second = var; 
-	return VAR_VOID; 
-}
 
 EVAL_NAMESPACE_END
 

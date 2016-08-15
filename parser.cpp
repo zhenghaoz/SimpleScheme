@@ -1,7 +1,7 @@
-#include <string>
 #include <map>
+#include <string>
 #include "parser.h"
-#include "exception.h"
+#include "exception.hpp"
 
 #define IS_NEWLINE(ch) (ch == '\r' || ch == '\n')
 #define IS_SPACE(ch) (ch == ' ' || ch == '\t' || IS_NEWLINE(ch))
@@ -32,9 +32,12 @@
 
 EVAL_NAMESPACE_BEGIN
 
+using istream = std::istream;
+using string = std::string;
+
 /* declare */
 
-bool isNumber(const std::string &str);
+bool isNumber(const string &str);
 Variable parse(istream &in);
 Variable parseString(istream &in);
 Variable parseList(istream &in);
@@ -45,7 +48,7 @@ bool endOfSharpComment(istream &in);
 
 /* symbol pool */
 
-static map _symbolPool;
+static map<string, Variable> _symbolPool;
 
 /* variable stream */
 
@@ -79,7 +82,7 @@ Variable parse(istream &in)
 	}
 }
 
-bool isNumber(const std::string &str)
+bool isNumber(const string &str)
 {
 	int i = 0;
 	bool sgn = false;

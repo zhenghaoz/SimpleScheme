@@ -3,9 +3,10 @@
 #include <fstream>
 #include <vector>
 #include "variable.h"
-#include "exception.h"
+#include "exception.hpp"
 #include "evaluator.h"
 #include "parser.h"
+#include "primitive.h"
 
 using namespace std;
 using namespace eva;
@@ -30,9 +31,10 @@ using namespace eva;
 
 int main(int argc, char const *argv[])
 {
-	if (argc > 1)
-		EVAL_LOOP(fstream(argv[1]));
-	else
+	if (argc > 1) {
+		ifstream fin(argv[1]);
+		EVAL_LOOP(fin);
+	} else
 		EVAL_LOOP(cin);	
 	return 0;
 }

@@ -6,7 +6,7 @@
 EVAL_NAMESPACE_BEGIN
 
 Variable eval(const Variable &exp, Environment &env);
-Environment setupEnvironment();
+Variable apply(const Variable &proc, const Variable &vals, Environment &env);
 
 EVAL_NAMESPACE_END
 

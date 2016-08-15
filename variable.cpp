@@ -1,6 +1,5 @@
-#include <sstream>
 #include "variable.h"
-#include "exception.h"
+#include "exception.hpp"
 
 EVAL_NAMESPACE_BEGIN
 
@@ -11,10 +10,9 @@ uniform_int_distribution<int> GarbageCollector::distribution;
 vector<Variable> GarbageCollector::_watchList = vector<Variable>();
 Environment GarbageCollector::_globalEnv;
 
-void GarbageCollector::setGlobalEnvironment(const Environment& env)
-{
-	_globalEnv = env;
-}
+void GarbageCollector::setGlobalEnvironment(const Environment& env) { _globalEnv = env; }
+
+void GarbageCollector::addVar(const Variable& var) { _watchList.push_back(var); }
 
 void GarbageCollector::collect()
 {
@@ -31,6 +29,14 @@ void GarbageCollector::collect()
 
 /* primitive procedure */
 
+PrimitiveProcdeure::PrimitiveProcdeure(const string &name, const procedure &proc): 
+	_namePtr(std::make_shared<string>(name)), 
+	_proc(std::make_shared<procedure>(proc)) {}
+
+Variable PrimitiveProcdeure::operator() (const Variable &args, Environment &env) const { return (*_proc)(args, env); }
+
+string PrimitiveProcdeure::getName() const { return *_namePtr; }
+
 ostream &operator<<(ostream &out, const PrimitiveProcdeure &prim)
 {
 	if (*prim._namePtr == "")
@@ -41,6 +47,29 @@ ostream &operator<<(ostream &out, const PrimitiveProcdeure &prim)
 }
 
 /* compound procedure */
+
+CompoundProcedure::CompoundProcedure(const Variable &name, const Variable &args, const Variable &seq, const Environment &env):
+	_namePtr(std::make_shared<string>(string(name))),
+	_argsPtr(std::make_shared<Variable>(args)), 
+	_seqPtr(std::make_shared<Variable>(seq)), 
+	_envPtr(std::make_shared<Environment>(env)) {}
+
+CompoundProcedure::CompoundProcedure(const Variable &args, const Variable &seq, const Environment &env):
+	CompoundProcedure(Variable(""), args, seq, env) {}
+
+Variable CompoundProcedure::getSequence() const { return *_seqPtr; }
+
+Variable CompoundProcedure::getArguments() const { return *_argsPtr; }
+
+Environment CompoundProcedure::getEnvironmrnt() const { return *_envPtr; }
+
+void CompoundProcedure::finalize() 
+{ 
+	_envPtr.reset(); 
+	_namePtr.reset(); 
+	_seqPtr.reset();
+	_argsPtr.reset();
+}
 
 ostream &operator<<(ostream &out, const CompoundProcedure &comp)
 {
@@ -54,13 +83,14 @@ ostream &operator<<(ostream &out, const CompoundProcedure &comp)
 /* variable */
 
 // static member variable
+
 #ifdef EVAL_DEBUG
 int Variable::_valueCreated = 0;
 int Variable::_valueDestroyed = 0;
 #endif
+
 const char* Variable::_typeNames[] = { "void", "null", "number", "string", "symbol", "pair", "procedure", "procedure" };
 
-// util functions
 std::ostream& operator<<(std::ostream& out, const Variable& var)
 {
 	switch (var._type) {
@@ -86,14 +116,6 @@ std::ostream& operator<<(std::ostream& out, const Variable& var)
 	return out;
 }
 
-void Variable::swap(Variable &a, Variable &b)
-{
-	std::swap(a._type, b._type);
-	std::swap(a._refCount, b._refCount);
-	std::swap(a._voidPtr, b._voidPtr);
-	std::swap(a._tag, b._tag);
-}
-
 void Variable::printList(std::ostream& out, const Variable &var)
 {
 	if (var._type != Variable::PAIR)
@@ -110,8 +132,6 @@ void Variable::printList(std::ostream& out, const Variable &var)
 		out << " . " << b;
 	}
 }
-
-// interface
 
 bool Variable::isEqual(const Variable &b) const
 {
@@ -130,6 +150,14 @@ bool Variable::isEqual(const Variable &b) const
 		default:
 			throw SchemeException(string("variable: ") + toString() + "is uncomparable.");
 	}	
+}
+
+void Variable::swap(Variable &a, Variable &b)
+{
+	std::swap(a._voidPtr, b._voidPtr);
+	std::swap(a._refCount, b._refCount);
+	std::swap(a._type, b._type);
+	std::swap(a._tag, b._tag);
 }
 
 Variable::~Variable()
@@ -162,6 +190,59 @@ Variable::~Variable()
 				VAL_DESTROYED;
 		}
 	}
+}
+
+void Variable::requireType(const std::string &caller, Type type) const
+{
+	if (_type != type) 
+		throw SchemeException(caller + ": contract violation\n\texpected: " + _typeNames[type] + "\n\tgiven: " + toString());
+}
+
+Variable::operator bool() const 
+{ 
+	return _type != SYMBOL || *_strPtr != "false"; 
+}
+
+Variable::operator number() const
+{
+	if (!isNumber())
+		throw SchemeException(string("variable: can't convert ") + toString() + " to number");
+	return *_numPtr;
+}
+
+Variable::operator string() const
+{
+	if (!isSymbol() && !isString())
+		throw SchemeException(string("variable: can't convert ") + toString() + " to string");
+	return *_strPtr;
+}
+
+Variable::operator CompoundProcedure() const
+{
+	if (!isComp())
+		throw SchemeException(string("variable: can't convert ") + toString() + " to compound procedure");
+	return *_compPtr;
+}
+
+Variable Variable::operator() (const Variable &var, Environment &env) const
+{
+	if (!isPrim())
+		throw SchemeException(string("variable: ") + toString() + " isn't a primitive procedure.");
+	return (*_primPtr)(var, env);
+}
+
+Variable Variable::setCar(const Variable &var) 
+{ 
+	requireType("set-car!", PAIR); 
+	_pairPtr->first = var; 
+	return VAR_VOID; 
+}
+
+Variable Variable::setCdr(const Variable &var)
+{ 
+	requireType("set-cdr!", PAIR); 
+	_pairPtr->second = var; 
+	return VAR_VOID; 
 }
 
 // garbage collection
@@ -208,13 +289,13 @@ void Environment::addVars(const Variable &vars, const Variable &vals)
 }
 
 Environment::Environment(const Variable &vars, const Variable &vals): 
-		_encloseEnvPtr(nullptr), _envPtr(std::make_shared<map>())
+		_encloseEnvPtr(nullptr), _envPtr(std::make_shared<map<string, Variable>>())
 {
 	addVars(vars, vals);
 }
 
 Environment::Environment(const Variable &vars, const Variable &vals, const Environment &encloseEnv): 
-		_encloseEnvPtr(std::make_shared<Environment>(encloseEnv)), _envPtr(std::make_shared<map>())
+		_encloseEnvPtr(std::make_shared<Environment>(encloseEnv)), _envPtr(std::make_shared<map<string, Variable>>())
 {
 	addVars(vars, vals);
 }
@@ -225,7 +306,7 @@ Variable Environment::defineVariable(const Variable &var, const Variable &val)
 	return VAR_VOID;
 }
 
-map::iterator Environment::findVar(const Variable &var)
+map<string, Variable>::iterator Environment::findVar(const Variable &var)
 {
 	string str = static_cast<string>(var);
 	for (Environment *envIt = this; envIt; envIt = envIt->_encloseEnvPtr.get()) {

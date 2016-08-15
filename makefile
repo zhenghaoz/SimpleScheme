@@ -1,26 +1,28 @@
-# configure
-
-CC = g++
-STD = -std=c++11
-TARGET = main
+CC			= g++
+CPPFLAGS	= -std=c++11 -pg
+OUTPUT 		= main
+SOURCES		= $(wildcard *.cpp)
+OBJECTS		= $(SOURCES:.cpp=.o)
+DEPENDECES	= $(OBJECTS:.o=.d)
 
 # compile
 
-main: main.o variable.o parser.o evaluator.o
-	$(CC) main.o variable.o parser.o evaluator.o -o $(TARGET) $(STD)
+$(OUTPUT): $(OBJECTS)
+	$(CC) $(CPPFLAGS) $(OBJECTS) -o $(OUTPUT)
 
-variable.o: variable.cpp variable.h evaldef.h exception.h
-	$(CC) -c variable.cpp $(STD)
+-include $(DEPENDECES)
 
-parser.o: parser.cpp parser.h variable.h exception.h evaldef.h
-	$(CC) -c parser.cpp $(STD)
+%.d: %.cpp
+	$(CC) $(CPPFLAGS) -MM $< > $@
 
-evaluator.o: evaluator.cpp evaluator.h variable.h exception.h evaldef.h
-	$(CC) -c evaluator.cpp $(STD)
+# run
 
-main.o: main.cpp variable.h evaldef.h parser.h
-	$(CC) -c main.cpp $(STD)
+.PHONY: run
+run: $(OUTPUT)
+	./$(OUTPUT)
 
+# clean
+
+.PHONY: clean
 clean:
-	rm *.o
-	rm *.exe
+	-rm $(OBJECTS) $(DEPENDECES) $(OUTPUT)
