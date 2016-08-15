@@ -1,5 +1,4 @@
 #include <vector>
-#include <stack>
 #include <string>
 #include <cmath>
 #include <list>
@@ -49,13 +48,10 @@
 #define BINDING_VAR(exp)		exp.car()
 #define BINDING_VAL(exp)		exp.cdr().car()
 #define LET_BODY(exp)			exp.cdr().cdr()
-#define IS_EVAL(exp)			TAGGED_LIST(exp, "eval")
-#define EVAL_EXP(exp)			exp.cdr().car()
-#define IS_APPLY(exp)			TAGGED_LIST(exp, "apply")
-#define APPLY_PROC(exp)			exp.cdr().car()
-#define APPLY_ARGS(exp)			exp.cdr().cdr().car()
 #define APPLICATION_NAME(exp)	exp.car()
 #define APPLICATION_ARGS(exp)	exp.cdr()
+
+#define BOOL_TO_VAR(exp)		(exp ? VAR_TRUE : VAR_FALSE)
 
 EVAL_NAMESPACE_BEGIN
 
@@ -64,136 +60,228 @@ Variable evalOr(const Variable &expr, Environment &env);
 Variable evalSeq(const Variable &expr, Environment &env);
 Variable evalCond(const Variable &expr, Environment &env);
 Variable evalLet(const Variable &expr, Environment &env);
+Variable evalArgs(const Variable &args, Environment &env);
 Variable apply(const Variable &proc, const Variable &args, Environment &env);
 
 std::vector<PrimitiveProcdeure> prims = {
 
-	PrimitiveProcdeure("eq?", [](const Variable& args)->Variable{
+	PrimitiveProcdeure("eq?", [](const Variable& args, Environment &env)->Variable{
 		Variable a = args.car();
 		Variable b = args.cdr().car();
-		return a.isEqual(b) ? VAR_TRUE : VAR_FALSE;
+		return BOOL_TO_VAR(a.isEqual(b));
 	}),
 
-	PrimitiveProcdeure("null?", [](const Variable& args)->Variable{
-		return args.car().isNull() ? VAR_TRUE : VAR_FALSE;
+	PrimitiveProcdeure("null?", [](const Variable& args, Environment &env)->Variable{
+		return BOOL_TO_VAR(args.car().isNull());
 	}),
 
-	PrimitiveProcdeure("+", [](const Variable& args)->Variable{
+	PrimitiveProcdeure("number?", [](const Variable& args, Environment &env)->Variable{
+		return BOOL_TO_VAR(args.car().isNumber());
+	}),
+
+	PrimitiveProcdeure("pair?", [](const Variable& args, Environment &env)->Variable{
+		return BOOL_TO_VAR(args.car().isPair());
+	}),
+
+	PrimitiveProcdeure("string?", [](const Variable& args, Environment &env)->Variable{
+		return BOOL_TO_VAR(args.car().isString());
+	}),
+
+	PrimitiveProcdeure("symbol?", [](const Variable& args, Environment &env)->Variable{
+		return BOOL_TO_VAR(args.car().isSymbol());
+	}),
+
+	PrimitiveProcdeure("+", [](const Variable& args, Environment &env)->Variable{
 		number val = 0;
 		for (Variable it = args; !it.isNull(); it = it.cdr()) {
 			Variable a = it.car();
 			a.requireType("+", Variable::NUMBER);
-			val += number(a);
+			val += static_cast<number>(a);
 		}
 		return val;
 	}),
 
-	PrimitiveProcdeure("*", [](const Variable& args)->Variable{
+	PrimitiveProcdeure("*", [](const Variable& args, Environment &env)->Variable{
 		number val = 1;
 		for (Variable it = args; !it.isNull(); it = it.cdr()) {
 			Variable a = it.car();
 			a.requireType("*", Variable::NUMBER);
-			val *= number(a);
+			val *= static_cast<number>(a);
 		}
 		return val;
 	}),
 
-	PrimitiveProcdeure("-", [](const Variable& args)->Variable{
+	PrimitiveProcdeure("-", [](const Variable& args, Environment &env)->Variable{
 		Variable a = args.car();
 		Variable b = args.cdr().car();
 		a.requireType("-", Variable::NUMBER);
 		b.requireType("-", Variable::NUMBER);
-		return number(a) - number(b);
+		return static_cast<number>(a) - static_cast<number>(b);
 	}),
 
-	PrimitiveProcdeure("/", [](const Variable& args)->Variable{
+	PrimitiveProcdeure("/", [](const Variable& args, Environment &env)->Variable{
 		Variable a = args.car();
 		Variable b = args.cdr().car();
 		a.requireType("/", Variable::NUMBER);
 		b.requireType("/", Variable::NUMBER);
-		if (number(b) == 0)
+		if (static_cast<number>(b) == 0)
 			throw SchemeException("/: divide by zero");
-		return number(a) / number(b);
+		return static_cast<number>(a) / static_cast<number>(b);
 	}),
 
-	PrimitiveProcdeure("<", [](const Variable& args)->Variable{
+	PrimitiveProcdeure("<", [](const Variable& args, Environment &env)->Variable{
 		Variable a = args.car();
 		Variable b = args.cdr().car();
 		a.requireType("<", Variable::NUMBER);
 		b.requireType("<", Variable::NUMBER);
-		return number(a) < number(b) ? VAR_TRUE : VAR_FALSE;
+		return BOOL_TO_VAR(static_cast<number>(a) < static_cast<number>(b));
 	}),
 
-	PrimitiveProcdeure(">", [](const Variable& args)->Variable{
+	PrimitiveProcdeure(">", [](const Variable& args, Environment &env)->Variable{
 		Variable a = args.car();
 		Variable b = args.cdr().car();
 		a.requireType(">", Variable::NUMBER);
 		b.requireType(">", Variable::NUMBER);
-		return number(a) > number(b) ? VAR_TRUE : VAR_FALSE;
+		return BOOL_TO_VAR(static_cast<number>(a) > static_cast<number>(b));
 	}),
 
-	PrimitiveProcdeure("=", [](const Variable& args)->Variable{
+	PrimitiveProcdeure("=", [](const Variable& args, Environment &env)->Variable{
 		Variable a = args.car();
 		Variable b = args.cdr().car();
 		a.requireType("=", Variable::NUMBER);
 		b.requireType("=", Variable::NUMBER);
-		return number(a) == number(b) ? VAR_TRUE : VAR_FALSE;
+		return BOOL_TO_VAR(static_cast<number>(a) == static_cast<number>(b));
 	}),
 
-	PrimitiveProcdeure("remainder", [](const Variable &args)->Variable{
+	PrimitiveProcdeure("remainder", [](const Variable &args, Environment &env)->Variable{
 		Variable a = args.car();
 		Variable b = args.cdr().car();
 		a.requireType("remainder", Variable::NUMBER);
 		b.requireType("remainder", Variable::NUMBER);
-		return number(a) % number(b);
+		return static_cast<number>(a) % static_cast<number>(b);
 	}),
 
-	PrimitiveProcdeure("not", [](const Variable &args)->Variable{
+	PrimitiveProcdeure("not", [](const Variable &args, Environment &env)->Variable{
 		Variable a = args.car();
-		return a.isEqual("false") ? VAR_TRUE : VAR_FALSE;
+		return BOOL_TO_VAR(a.isEqual("false"));
 	}),
 
-	PrimitiveProcdeure("cons", [](const Variable& args)->Variable{
+	PrimitiveProcdeure("cons", [](const Variable& args, Environment &env)->Variable{
 		Variable a = args.car();
 		Variable b = args.cdr().car();
 		return Variable(a, b);
 	}),
 
-	PrimitiveProcdeure("car", [](const Variable &args)->Variable{
+	PrimitiveProcdeure("car", [](const Variable &args, Environment &env)->Variable{
 		Variable pair = args.car();
 		return pair.car();
 	}),
 
-	PrimitiveProcdeure("cdr", [](const Variable &args)->Variable{
+	PrimitiveProcdeure("cdr", [](const Variable &args, Environment &env)->Variable{
 		Variable pair = args.car();
 		return pair.cdr();
 	}),
 
-	PrimitiveProcdeure("set-car!", [](const Variable &args)->Variable{
+	PrimitiveProcdeure("set-car!", [](const Variable &args, Environment &env)->Variable{
 		Variable pair = args.car();
 		Variable car = args.cdr().car();
 		return pair.setCar(car);
 	}),
 
-	PrimitiveProcdeure("set-cdr!", [](const Variable &args)->Variable{
+	PrimitiveProcdeure("set-cdr!", [](const Variable &args, Environment &env)->Variable{
 		Variable pair = args.car();
 		Variable cdr = args.cdr().car();
 		return pair.setCdr(cdr);
 	}),
 
-	PrimitiveProcdeure("list", [](const Variable &args)->Variable{
+	PrimitiveProcdeure("list", [](const Variable &args, Environment &env)->Variable{
 		return args;
 	}),
 
-	PrimitiveProcdeure("map", [](const Variable &args)->Variable{
+	PrimitiveProcdeure("length", [](const Variable &args, Environment &env)->Variable{
+		int length = 0;
+		for (Variable it = args.car(); !it.isNull(); it = it.cdr(), length++);
+		return length;
+	}),
+
+	PrimitiveProcdeure("append", [](const Variable &args, Environment &env)->Variable{
+		Variable head = Variable(VAR_NULL, VAR_NULL);
+		Variable tail = head;
+		for (Variable it = args; !it.isNull(); it = it.cdr()) {
+			Variable li = it.car();
+			if (!li.isNull()) {
+				tail.setCdr(li);
+				while (!tail.cdr().isNull())
+					tail = tail.cdr();
+			}
+		}
+		return head.cdr();
+	}),
+
+	PrimitiveProcdeure("map", [](const Variable &args, Environment &env)->Variable{
 		Variable proc = args.car();
+		// get arguments
 		std::list<Variable> argss;
 		for (Variable it = args.cdr(); !it.isNull(); it = it.cdr())
 			argss.push_back(it.car());
+		// apply
+		Variable head = Variable(VAR_NULL, VAR_NULL);
+		Variable tail = head;
+		while (true) {
+			Variable argshead = Variable(VAR_NULL, VAR_NULL);
+			Variable argstail = argshead;
+			bool stop = false;
+			for (auto it = argss.begin(); it != argss.end(); it++)
+				if (it->isNull()) {	// two few arguments
+					stop = true;
+					break;
+				} else {			// success
+					Variable narg = Variable(it->car(), VAR_NULL);
+					argstail.setCdr(narg);
+					argstail = narg;
+					*it = it->cdr();
+				}
+			if (stop) {	// two few arguments
+				break;
+			} else {	// sccuess
+				Variable ntail = Variable(apply(proc, argshead.cdr(), env), VAR_NULL);
+				tail.setCdr(ntail);
+				tail = ntail;
+			}
+		}
+		return head.cdr();
 	}),
 
-	PrimitiveProcdeure("newline", [](const Variable &args)->Variable{
+	PrimitiveProcdeure("newline", [](const Variable &args, Environment &env)->Variable{
 		std::cout << std::endl;
+		return VAR_VOID;
+	}),
+
+	PrimitiveProcdeure("display", [](const Variable &args, Environment &env)->Variable{
+		std::cout << args.car();
+		return VAR_VOID;
+	}),
+
+	PrimitiveProcdeure("read", [](const Variable &args, Environment &env)->Variable{
+		Variable val = VAR_NULL;
+		if (std::cin >> val)
+			return val;
+		throw SchemeException("read: end of file");
+	}),
+
+	PrimitiveProcdeure("error", [](const Variable &args, Environment &env)->Variable{
+		std::string msg;
+		for (Variable it = args; !it.isNull(); it = it.cdr())
+			msg += it.car().toString();
+		throw SchemeException(msg);
+	}),
+
+	PrimitiveProcdeure("eval", [](const Variable &args, Environment &env)->Variable{
+		return eval(args.car(), env);
+	}),
+
+	PrimitiveProcdeure("apply", [](const Variable &args, Environment &env)->Variable{
+		return apply(args.car(), args.cdr().car(), env);
 	})
 };
 
@@ -228,10 +316,8 @@ Variable eval(const Variable &expr, Environment &env)
 		return Variable(LAMBDA_ARGS(expr), LAMBDA_BODY(expr), env);
 	if (IS_LET(expr))
 		return evalLet(expr, env);
-	if (IS_EVAL(expr))
-		return eval(eval(EVAL_EXP(expr), env), env);
 	if (IS_APPLICATION(expr))
-		return apply(APPLICATION_NAME(expr), APPLICATION_ARGS(expr), env);
+		return apply(eval(APPLICATION_NAME(expr), env), evalArgs(APPLICATION_ARGS(expr), env), env);
 	throw SchemeException(std::string("eval: can't evaluate ") + expr.toString());
 }
 
@@ -279,28 +365,30 @@ Variable evalLet(const Variable &expr, Environment &env)
 	return evalSeq(LET_BODY(expr), extendEnv);
 }
 
-Variable apply(const Variable &proc, const Variable &args, Environment &env)
+Variable evalArgs(const Variable &args, Environment &env)
 {
-	Variable procEvaled = eval(proc, env);
-	std::stack<Variable> argStack;
-	for (Variable it = args; !it.isNull(); it = it.cdr())
-		argStack.push(eval(it.car(), env));
-	Variable vals = VAR_NULL;
-	while (!argStack.empty()) {
-		Variable val = argStack.top();
-		vals = Variable(val, vals);
-		argStack.pop();
+	Variable head = Variable(VAR_NULL, VAR_NULL);
+	Variable tail = head;
+	for (Variable it = args; !it.isNull(); it = it.cdr()) {
+		Variable ntail = Variable(eval(it.car(), env), VAR_NULL);
+		tail.setCdr(ntail);
+		tail = ntail;
 	}
-	if (procEvaled.isPrim())
+	return head.cdr();
+}
+
+Variable apply(const Variable &proc, const Variable &vals, Environment &env)
+{
+	if (proc.isPrim())
 		// eval primitives
 		try {
-			return procEvaled(vals);
+			return proc(vals, env);
 		} catch (SchemeException e) {
-			e.addTrace(procEvaled.toString());
+			e.addTrace(proc.toString());
 			throw e;
 		}
-	if (procEvaled.isComp()) {
-		CompoundProcedure comp = CompoundProcedure(procEvaled);
+	if (proc.isComp()) {
+		CompoundProcedure comp = CompoundProcedure(proc);
 		Variable body = comp.getSequence();
 		Variable args = comp.getArguments();
 		Environment extendEnv = Environment(args, vals, comp.getEnvironmrnt());
@@ -308,20 +396,21 @@ Variable apply(const Variable &proc, const Variable &args, Environment &env)
 		try {
 			return evalSeq(body, extendEnv);
 		} catch (SchemeException e) {
-			e.addTrace(procEvaled.toString() + ":" + body.toString());
+			e.addTrace(proc.toString() + ":" + body.toString());
 			throw e;
 		}
 	}
-	throw SchemeException(std::string("eval: can't apply ") + proc.toString());
+	throw SchemeException(std::string("apply: can't apply ") + proc.toString());
 }
 
 Environment setupEnvironment()
 {
 	Environment env = Environment();
-	GarbageCollector::setGlobalEnvironment(env);
+	// add constant 
 	env.defineVariable(std::string("true"), VAR_TRUE);
 	env.defineVariable(std::string("false"), VAR_FALSE);
 	env.defineVariable(std::string("null"), VAR_NULL);
+	// add primitive procedure
 	for (const PrimitiveProcdeure &prim : prims)
 		env.defineVariable(prim.getName(), prim);
 	return env;
