@@ -28,3 +28,6 @@
 *.out
 *.app
 main
+
+# Dependency
+*.d

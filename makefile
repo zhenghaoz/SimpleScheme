@@ -1,5 +1,5 @@
 CC			= g++
-CPPFLAGS	= -std=c++11 -pg
+CPPFLAGS	= -std=c++11
 OUTPUT 		= main
 SOURCES		= $(wildcard *.cpp)
 OBJECTS		= $(SOURCES:.cpp=.o)
@@ -13,13 +13,8 @@ $(OUTPUT): $(OBJECTS)
 -include $(DEPENDECES)
 
 %.d: %.cpp
-	$(CC) $(CPPFLAGS) -MM $< > $@
-
-# run
-
-.PHONY: run
-run: $(OUTPUT)
-	./$(OUTPUT)
+	$(CC) -MM $(CPPFLAGS) $< > $@
+	sed -i 's,\($*\)\.o[ :]*,\1.o $@ : ,g' $@
 
 # clean
 
