@@ -2,7 +2,7 @@
 #define PARSER_H
 
 #include <iostream>
-#include "variable.h"
+#include "variable.hpp"
 
 EVAL_NAMESPACE_BEGIN
 

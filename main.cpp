@@ -1,12 +1,10 @@
 #include <iostream>
-#include <cctype>
 #include <fstream>
-#include <vector>
-#include "variable.h"
+#include "variable.hpp"
 #include "exception.hpp"
-#include "evaluator.h"
-#include "parser.h"
-#include "primitive.h"
+#include "evaluator.hpp"
+#include "parser.hpp"
+#include "primitive.hpp"
 
 using namespace std;
 using namespace eva;

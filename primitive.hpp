@@ -1,8 +1,8 @@
 #ifndef PRIMITIVE_H
 #define PRIMITIVE_H
 
-#include "evaldef.h"
-#include "variable.h"
+#include "evaldef.hpp"
+#include "variable.hpp"
 
 EVAL_NAMESPACE_BEGIN
 

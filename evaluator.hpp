@@ -1,7 +1,7 @@
 #ifndef EVALUATOR_H
 #define EVALUATOR_H
 
-#include "variable.h"
+#include "variable.hpp"
 
 EVAL_NAMESPACE_BEGIN
 

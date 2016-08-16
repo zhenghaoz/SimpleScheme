@@ -1,7 +1,7 @@
 #include <list>
-#include "evaluator.h"
-#include "parser.h"
-#include "primitive.h"
+#include "evaluator.hpp"
+#include "parser.hpp"
+#include "primitive.hpp"
 
 #define BOOL_TO_VAR(exp)		(exp ? VAR_TRUE : VAR_FALSE)
 

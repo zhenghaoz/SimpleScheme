@@ -1,6 +1,6 @@
 #include <map>
 #include <string>
-#include "parser.h"
+#include "parser.hpp"
 #include "exception.hpp"
 
 #define IS_NEWLINE(ch) (ch == '\r' || ch == '\n')

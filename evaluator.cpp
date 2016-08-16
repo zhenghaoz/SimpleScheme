@@ -1,6 +1,6 @@
 #include <string>
-#include "evaluator.h"
-#include "variable.h"
+#include "evaluator.hpp"
+#include "variable.hpp"
 #include "exception.hpp"
 
 #define TAGGED_LIST(exp, tag)	(exp.isPair() && exp.car().isEqual(tag))
