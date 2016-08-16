@@ -89,7 +89,7 @@ int Variable::_valueCreated = 0;
 int Variable::_valueDestroyed = 0;
 #endif
 
-const char* Variable::_typeNames[] = { "void", "null", "number", "string", "symbol", "pair", "procedure", "procedure" };
+const vector<string> Variable::_typeNames = { "void", "null", "number", "string", "symbol", "pair", "procedure", "procedure" };
 
 std::ostream& operator<<(std::ostream& out, const Variable& var)
 {

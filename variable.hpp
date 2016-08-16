@@ -108,7 +108,7 @@ public:
 	static int _valueCreated;
 	static int _valueDestroyed;
 	#endif
-	static const char* _typeNames[];
+	static const vector<string> _typeNames;
 	enum Type { VOID, NIL, NUMBER, SYMBOL, STRING, PAIR, PRIM, COMP };
 	friend GarbageCollector;
 	friend std::ostream& operator<<(std::ostream& out, const Variable& var);
