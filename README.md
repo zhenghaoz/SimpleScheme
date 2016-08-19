@@ -11,7 +11,7 @@ make
 ./main
 ```
 
-## Document(Simplified Chinese)
+## Note(Simplified Chinese)
 
 1. [Scheme解释器实现(一)：类型无关和运行环境](http://sine-x.com/scheme-evaluator-1/)
 
@@ -23,8 +23,8 @@ make
 
 ## Defect
 
-- Use integer as numeric type(Rational number is better).
+- Rational number is not supported.
 
-- Need more primitive procedure.
+- Need more primitive procedures.
 
 - There might be some bugs.
