@@ -22,8 +22,11 @@ $(EXECUTABLE): $(OBJECTS)
 -include $(DEPENDECES)
 
 $(BUILDDIR)/%.d: $(SRCDIR)/%.cpp
-	$(CC) -MM $(CPPFLAGS) $< > $@
-	sed -i 's,\($*\)\.o[ :]*,\1.o $@ : ,g' $@
+	@set -e;\
+	rm -f $@;\
+	$(CC) -MM $(CPPFLAGS) $< > $@.$$$$;\
+	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;\
+	rm -f $@.$$$$
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.cpp
 	$(CC) $(CPPFLAGS) $< -c -o $@

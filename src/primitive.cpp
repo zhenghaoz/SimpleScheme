@@ -231,7 +231,7 @@ std::vector<PrimitiveProcdeure> prims = {
 
 Environment setupEnvironment()
 {
-	Environment env = Environment();
+	Environment env;
 	// add constant 
 	env.defineVariable(std::string("true"), VAR_TRUE);
 	env.defineVariable(std::string("false"), VAR_FALSE);
