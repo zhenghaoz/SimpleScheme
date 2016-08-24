@@ -35,13 +35,13 @@ using procedure = std::function<Variable(const Variable&, Environment&)>;
 
 /* dynamic object tracer */
 
-#ifdef EVAL_DEBUG
+#ifdef EVAL_TRACE_MEMORY
 
 #define VAL_CREATED			do { _valueCreated++; } while (0)
 #define VAL_DESTROYED		do { _valueDestroyed++; VAL_DEBUG_STATE; } while (0)
-#define VAL_DEBUG_STATE		do { std::clog << "[value] created: " << Variable::_valueCreated\
-								<< " destroyed: " << Variable::_valueDestroyed\
-								<< " alive: " << Variable::_valueCreated - Variable::_valueDestroyed << std::endl; } while(0)
+#define VAL_DEBUG_STATE		do { std::clog << "trace memory: created(" << Variable::_valueCreated\
+								<< ") destroyed(" << Variable::_valueDestroyed\
+								<< ") alive(" << Variable::_valueCreated - Variable::_valueDestroyed << ")" << std::endl; } while(0)
 
 #else
 
@@ -103,8 +103,7 @@ class SpecialVariable {};
 class Variable
 {
 public:
-	// public member 
-	#ifdef EVAL_DEBUG
+	#ifdef EVAL_TRACE_MEMORY
 	static int _valueCreated;
 	static int _valueDestroyed;
 	#endif

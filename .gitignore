@@ -27,7 +27,3 @@
 *.exe
 *.out
 *.app
-main
-
-# Dependency
-*.d

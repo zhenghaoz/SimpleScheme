@@ -8,7 +8,7 @@ SimpleScheme is a simple scheme evaluator implemented by C++.
 git clone https://github.com/ZhangZhenghao/SimpleScheme.git
 cd SimpleScheme
 make
-./main
+./build/main
 ```
 
 ## Note(Simplified Chinese)

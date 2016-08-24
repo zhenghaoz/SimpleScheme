@@ -1,23 +1,35 @@
 CC			= g++
 CPPFLAGS	= -std=c++11
-OUTPUT 		= main
-SOURCES		= $(wildcard *.cpp)
-OBJECTS		= $(SOURCES:.cpp=.o)
+SRCDIR		= src
+BUILDDIR	= build
+EXECUTABLE 	= $(BUILDDIR)/main
+SOURCES		= $(wildcard $(SRCDIR)/*.cpp)
+OBJECTS		= $(patsubst $(SRCDIR)/%.cpp, $(BUILDDIR)/%.o, $(SOURCES))
 DEPENDECES	= $(OBJECTS:.o=.d)
+
+all: $(EXECUTABLE)
+
+# debug
+
+debug: CPPFLAGS += -D EVAL_TRACE_MEMORY
+debug: $(EXECUTABLE)
 
 # compile
 
-$(OUTPUT): $(OBJECTS)
-	$(CC) $(CPPFLAGS) $(OBJECTS) -o $(OUTPUT)
+$(EXECUTABLE): $(OBJECTS)
+	$(CC) $(CPPFLAGS) $(OBJECTS) -o $(EXECUTABLE)
 
 -include $(DEPENDECES)
 
-%.d: %.cpp
+$(BUILDDIR)/%.d: $(SRCDIR)/%.cpp
 	$(CC) -MM $(CPPFLAGS) $< > $@
 	sed -i 's,\($*\)\.o[ :]*,\1.o $@ : ,g' $@
+
+$(BUILDDIR)/%.o: $(SRCDIR)/%.cpp
+	$(CC) $(CPPFLAGS) $< -c -o $@
 
 # clean
 
 .PHONY: clean
 clean:
-	-rm $(OBJECTS) $(DEPENDECES) $(OUTPUT)
+	-rm $(OBJECTS) $(DEPENDECES)

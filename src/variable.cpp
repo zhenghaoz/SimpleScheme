@@ -84,7 +84,7 @@ ostream &operator<<(ostream &out, const CompoundProcedure &comp)
 
 // static member variable
 
-#ifdef EVAL_DEBUG
+#ifdef EVAL_TRACE_MEMORY
 int Variable::_valueCreated = 0;
 int Variable::_valueDestroyed = 0;
 #endif
