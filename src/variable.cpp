@@ -13,6 +13,12 @@ using ostream = std::ostream;
 ostream& operator<<(ostream& out, const Variable& var)
 {
 	switch (var.type) {
+		case Variable::SPEC:
+			if (var == VAR_TRUE)
+				out << "#t";
+			else if (var == VAR_FALSE)
+				out << "#f";
+			break;
 		case Variable::RATIONAL:
 			out << *(var.rationalPtr);
 			break;
@@ -102,58 +108,86 @@ Variable operator-(const Variable& var)
 	return Variable(- *var.rationalPtr);
 }
 
-// Logical operations
-Variable operator and(const Variable& lhs, const Variable& rhs)
-{
-	if (lhs != VAR_FALSE && rhs != VAR_FALSE)
-		return VAR_TRUE;
-	return VAR_FALSE;
-}
-
-Variable operator or(const Variable& lhs, const Variable& rhs)
-{
-	if (lhs != VAR_FALSE || rhs != VAR_FALSE)
-		return VAR_TRUE;
-	return VAR_FALSE;
-}
-
-Variable operator xor(const Variable& lhs, const Variable& rhs)
-{
-
-}
-
-Variable operator not(const Variable& var)
-{
-	if (var == VAR_FALSE)
-		return VAR_TRUE;
-	return VAR_FALSE;
-}
-
 // Compare operations
-Variable operator<(const Variable& lhs, const Variable& rhs)
-{
 
+bool operator<(const Variable& lhs, const Variable& rhs)
+{
+	lhs.requireType("<", Variable::DOUBLE | Variable::RATIONAL);
+	rhs.requireType("<", Variable::DOUBLE | Variable::RATIONAL);
+	switch (lhs.type | rhs.type) {
+		case Variable::DOUBLE:
+			return *lhs.doublePtr < *rhs.doublePtr;
+		case Variable::RATIONAL:
+			return *lhs.rationalPtr < *rhs.rationalPtr;
+		default:
+			return lhs.toDouble() < rhs.toDouble();
+	}
 }
 
-Variable operator>(const Variable& lhs, const Variable& rhs)
+bool operator>(const Variable& lhs, const Variable& rhs)
 {
-
+	lhs.requireType(">", Variable::DOUBLE | Variable::RATIONAL);
+	rhs.requireType(">", Variable::DOUBLE | Variable::RATIONAL);
+	switch (lhs.type | rhs.type) {
+		case Variable::DOUBLE:
+			return *lhs.doublePtr > *rhs.doublePtr;
+		case Variable::RATIONAL:
+			return *lhs.rationalPtr > *rhs.rationalPtr;
+		default:
+			return lhs.toDouble() > rhs.toDouble();
+	}
 }
 
-
-bool operator!=(const Variable& lhs, const Variable& rhs)
+bool operator<=(const Variable& lhs, const Variable& rhs)
 {
-	return !(lhs == rhs);
+	lhs.requireType("<=", Variable::DOUBLE | Variable::RATIONAL);
+	rhs.requireType("<=", Variable::DOUBLE | Variable::RATIONAL);
+	switch (lhs.type | rhs.type) {
+		case Variable::DOUBLE:
+			return *lhs.doublePtr <= *rhs.doublePtr;
+		case Variable::RATIONAL:
+			return *lhs.rationalPtr <= *rhs.rationalPtr;
+		default:
+			return lhs.toDouble() <= rhs.toDouble();
+	}
 }
 
-Variable operator<=(const Variable& lhs, const Variable& rhs)
+bool operator>=(const Variable& lhs, const Variable& rhs)
 {
-
+	lhs.requireType(">=", Variable::DOUBLE | Variable::RATIONAL);
+	rhs.requireType(">=", Variable::DOUBLE | Variable::RATIONAL);
+	switch (lhs.type | rhs.type) {
+		case Variable::DOUBLE:
+			return *lhs.doublePtr >= *rhs.doublePtr;
+		case Variable::RATIONAL:
+			return *lhs.rationalPtr >= *rhs.rationalPtr;
+		default:
+			return lhs.toDouble() >= rhs.toDouble();
+	}
 }
 
-Variable operator>=(const Variable& lhs, const Variable& rhs)
+bool operator==(const Variable &lhs, const Variable &rhs)
 {
-
+	// Self compare
+	if (lhs.refCount == rhs.refCount)
+		return true;
+	// Different type
+	if (lhs.type != rhs.type)
+		return false;
+	switch (lhs.type) {
+		case Variable::DOUBLE:
+			return *lhs.doublePtr == *rhs.doublePtr;
+		case Variable::RATIONAL:
+			return *lhs.rationalPtr == *rhs.rationalPtr;
+		case Variable::STRING:
+		case Variable::SYMBOL:
+			return *lhs.stringPtr == *rhs.stringPtr;
+		case Variable::PAIR:
+			return lhs.pairPtr->first == rhs.pairPtr->first
+					&& lhs.pairPtr->second == rhs.pairPtr->second;
+		default:
+			return false;
+	}
 }
 
 Variable Variable::operator()(const Variable& arg, const Environment &env)

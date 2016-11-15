@@ -167,33 +167,15 @@ public:
 	friend Variable operator/(const Variable& lhs, const Variable& rhs);
 	friend Variable operator-(const Variable& var);
 
-	// Logical operations
-	friend Variable andVar(const Variable& lhs, const Variable& rhs);
-	friend Variable orVar(const Variable& lhs, const Variable& rhs);
-	friend Variable xorVar(const Variable& lhs, const Variable& rhs);
-	friend Variable notVar(const Variable& var);
-
 	// Compare operations
-	friend Variable operator<(const Variable& lhs, const Variable& rhs);
-	friend Variable operator>(const Variable& lhs, const Variable& rhs);
-
-	friend bool operator!=(const Variable& lhs, const Variable& rhs);
-	friend Variable operator<=(const Variable& lhs, const Variable& rhs);
-	friend Variable operator>=(const Variable& lhs, const Variable& rhs);
+	friend bool operator<(const Variable& lhs, const Variable& rhs);
+	friend bool operator>(const Variable& lhs, const Variable& rhs);
+	friend bool operator<=(const Variable& lhs, const Variable& rhs);
+	friend bool operator>=(const Variable& lhs, const Variable& rhs);
+	friend bool operator==(const Variable& lhs, const Variable& rhs);
 
 	// Function call
 	Variable operator()(const Variable& arg, const Environment& env);
-
-	bool operator==(const Variable &var) const {
-		if (type != var.type)
-			return false;
-		switch (type) {
-			case DOUBLE:
-				return *doublePtr == *(var.doublePtr);
-			case RATIONAL:
-				return *rationalPtr == *(var.rationalPtr);
-		}
-	}
 };
 
 // Swap two variables
