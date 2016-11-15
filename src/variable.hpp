@@ -19,12 +19,12 @@ public:
 
 	// Type of variable
 	enum Type {
-		RATIONAL,
-		DOUBLE,
-		STRING,
-		SYMBOL,
-		SPEC,
-		PAIR
+		RATIONAL = 0x01,
+		DOUBLE 	 = 0x02,
+		STRING 	 = 0x04,
+		SYMBOL   = 0x08,
+		SPEC     = 0x10,
+		PAIR 	 = 0x20
 	};
 	
 private:
@@ -55,6 +55,18 @@ private:
 
 	// Reference count
 	int* refCount = nullptr;
+
+	void requireType(const string &caller, int type) const
+	{
+
+	}
+
+	double toDouble() const
+	{
+		if (type == RATIONAL)
+			return static_cast<double>(*rationalPtr);
+		return *doublePtr;
+	}
 
 public:
 
@@ -164,13 +176,24 @@ public:
 	// Compare operations
 	friend Variable operator<(const Variable& lhs, const Variable& rhs);
 	friend Variable operator>(const Variable& lhs, const Variable& rhs);
-	friend bool operator==(const Variable& lhs, const Variable& rhs);
+
 	friend bool operator!=(const Variable& lhs, const Variable& rhs);
 	friend Variable operator<=(const Variable& lhs, const Variable& rhs);
 	friend Variable operator>=(const Variable& lhs, const Variable& rhs);
 
 	// Function call
 	Variable operator()(const Variable& arg, const Environment& env);
+
+	bool operator==(const Variable &var) const {
+		if (type != var.type)
+			return false;
+		switch (type) {
+			case DOUBLE:
+				return *doublePtr == *(var.doublePtr);
+			case RATIONAL:
+				return *rationalPtr == *(var.rationalPtr);
+		}
+	}
 };
 
 // Swap two variables
