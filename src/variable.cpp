@@ -6,6 +6,13 @@
 #include <iostream>
 #include "variable.hpp"
 
+// Constant values
+
+const Variable VAR_NULL		= Variable();
+const Variable VAR_VOID		= Variable();
+const Variable VAR_TRUE		= Variable();
+const Variable VAR_FALSE	= Variable();
+
 // Type alias
 using ostream = std::ostream;
 
@@ -32,6 +39,33 @@ ostream& operator<<(ostream& out, const Variable& var)
 			out << *(var.stringPtr);
 	}
 	return out;
+}
+
+// Check operations
+
+bool Variable::isNull() const
+{
+	return refCount == VAR_NULL.refCount;
+}
+
+bool Variable::isNumber() const
+{
+	return type & (RATIONAL | DOUBLE);
+}
+
+bool Variable::isSymbol() const
+{
+	return type == SYMBOL;
+}
+
+bool Variable::isString() const
+{
+	return type == STRING;
+}
+
+bool Variable::isProcedure() const
+{
+	return type & (COMP | PRIM);
 }
 
 // Arithmetic operations
@@ -188,6 +222,34 @@ bool operator==(const Variable &lhs, const Variable &rhs)
 		default:
 			return false;
 	}
+}
+
+// Pair operations
+
+Variable Variable::car() const
+{
+	requireType("car", Variable::PAIR);
+	return pairPtr->first;
+}
+
+Variable Variable::cdr() const
+{
+	requireType("cdr", Variable::PAIR);
+	return pairPtr->second;
+}
+
+Variable Variable::setCar(const Variable& var) const
+{
+	requireType("car", Variable::PAIR);
+	pairPtr->first = var;
+	return VAR_VOID;
+}
+
+Variable Variable::setCdr(const Variable& var) const
+{
+	requireType("car", Variable::PAIR);
+	pairPtr->second = var;
+	return VAR_VOID;
 }
 
 Variable Variable::operator()(const Variable& arg, const Environment &env)
