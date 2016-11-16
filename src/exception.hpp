@@ -30,14 +30,14 @@ public:
 
 	void printStack()
 	{
-		using std::cout;
+		using std::cerr;
 		using std::endl;
 
-		cout << msg << endl;
+		cerr << msg << endl;
 		for (int i = 0; i < trace.size(); i++)
 			if (i == 0)
-				cout << "\tfrom: " << trace[i] << endl;
+				cerr << "\tfrom: " << trace[i] << endl;
 			else
-				cout << "\t      " << trace[i] << endl;
+				cerr << "\t      " << trace[i] << endl;
 	}
 };
