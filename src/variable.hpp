@@ -1,5 +1,5 @@
 //
-// Low level variable for Scheme
+// Variable for Scheme
 //
 // Author: Zhang Zhenghao (zhangzhenghao@hotmail.com)
 //
@@ -33,12 +33,13 @@ public:
 private:
 
 	// Indent class
-	class Primitive;
-	class Compound;
+	struct Primitive;
+	struct Compound;
 
 	// Type alias
 	using string = std::string;
 	using ostream = std::ostream;
+	using istream = std::istream;
 	using ostringstream = std::ostringstream;
 	using pair = std::pair<Variable, Variable>;
 	using cpp_rational = boost::multiprecision::cpp_rational;
@@ -60,15 +61,6 @@ private:
 		Primitive*	primPtr;
 		Compound*	compPtr;
 	};
-
-	
-
-	double toDouble() const
-	{
-		if (type == RATIONAL)
-			return static_cast<double>(*rationalPtr);
-		return *doublePtr;
-	}
 
 public:
 
@@ -124,6 +116,9 @@ public:
 	// Destructor
 	~Variable();
 
+	// Swap two variables
+	friend void swap(Variable& lhs, Variable& rhs);
+
 	// Assignment
 	Variable& operator=(Variable var)
 	{
@@ -131,22 +126,24 @@ public:
 		return *this;
 	}
 
-	// Convert variable to string
-	string toString() const
-	{
-		ostringstream out;
-		out << (*this);
-		return out.str();
-	}
-
-	// Standard output
+	// Standard I/O
 	friend ostream& operator<<(ostream& out, const Variable& var);
+	friend istream& operator>>(istream& in, Variable& var);
 
-	// Swap two variables
-	friend void swap(Variable& lhs, Variable& rhs);
+	// Require type, throw exception if type is wrong
+	void requireType(const string &caller, int type) const;
+
+	// Get type name
+	static string getTypeName(int type);
+
+	// Convert operations
+	string toString() const;
+	double toDouble() const;
 
 	// Check operations
 	bool isNull() const;
+	bool isVoid() const;
+	bool isPair() const;
 	bool isNumber() const;
 	bool isSymbol() const;
 	bool isString() const;
@@ -172,33 +169,30 @@ public:
 	Variable setCar(const Variable& var) const;
 	Variable setCdr(const Variable& var) const;
 
-	// Function call
+	// Procedure operations
 	Variable operator()(const Variable& arg, const Environment& env);
-
-	void requireType(const string &caller, int type) const
-	{
-
-	}
+	Variable getProcedureArgs() const;
+	Variable getProcedureBody() const;
+	string getProcedureName() const;
+	Environment getProcedureEnv() const;
 };
 
 // Primitive procedure
 
-class Variable::Primitive
+struct Variable::Primitive
 {
 	string name;	// Name of procedure
 	function func;	// Function object
-public:
 	Primitive(const string& name, const function& func): name(name), func(func) {}
 };
 
 // Compound procedure
 
-class Variable::Compound
+struct Variable::Compound
 {
 	string name;		// Name of procedure
 	Variable args, body;// Argument and body
 	Environment env;	// Closure
-public:
 	Compound(const string& name, const Variable& args, const Variable& body, const Environment& env):
 		name(name), args(args), body(body), env(env) {}
 };
