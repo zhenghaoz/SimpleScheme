@@ -97,7 +97,7 @@ public:
 	}
 
 	// Constructor for pairs
-	Variable(const Variable& lhs, Variable& rhs): 
+	Variable(const Variable& lhs, const Variable& rhs): 
 		type(PAIR), refCount(new int(1)), pairPtr(new pair(lhs, rhs)) {}
 
 	// Constructor for primitive procedure
@@ -162,6 +162,7 @@ public:
 	friend bool operator<=(const Variable& lhs, const Variable& rhs);
 	friend bool operator>=(const Variable& lhs, const Variable& rhs);
 	friend bool operator==(const Variable& lhs, const Variable& rhs);
+	friend bool operator!=(const Variable& lhs, const Variable& rhs);
 
 	// Pair operations
 	Variable car() const;
@@ -243,7 +244,7 @@ inline Variable::~Variable() {
 		case COMP:
 			delete compPtr;		
 			break;
-		default:
+		case SPEC:
 			;
 	}
 }

@@ -18,6 +18,25 @@ using string = std::string;
 // Standard output
 ostream& operator<<(ostream& out, const Variable& var)
 {
+	// List
+	if (var == VAR_NULL || var.type == Variable::PAIR) {
+		out << '(';
+		Variable it = var;
+		bool empty = true;
+		while (it.isPair()) {
+			if (empty) 
+				empty = false;
+			else
+				out << ' ';
+			out << it.car();
+			it = it.cdr();
+		}
+		if (it != VAR_NULL)
+			out << " . " << it;
+		out << ')';
+		return out;
+	}
+	// Single item
 	switch (var.type) {
 		case Variable::SPEC:
 			if (var == VAR_TRUE)
@@ -41,6 +60,8 @@ ostream& operator<<(ostream& out, const Variable& var)
 		case Variable::COMP:
 			out << "#<procedure:" + var.getProcedureName() + ">";
 			break;
+		default:
+			;
 	}
 	return out;
 }
@@ -292,6 +313,11 @@ bool operator==(const Variable &lhs, const Variable &rhs)
 		default:
 			return false;
 	}
+}
+
+bool operator!=(const Variable& lhs, const Variable& rhs)
+{
+	return !(lhs == rhs);
 }
 
 // Pair operations
