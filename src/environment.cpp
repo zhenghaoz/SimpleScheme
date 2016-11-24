@@ -26,7 +26,7 @@ void Environment::addVars(const Variable &vars, const Variable &vals)
 	for (Variable varIt = vars, valIt = vals; !varIt.isNull() && !valIt.isNull(); varIt = varIt.cdr(), valIt = valIt.cdr()) {
 		Variable var = varIt.car();
 		Variable val = valIt.car();
-		var.requireType("define variable", Variable::SYMBOL);
+		var.requireType("define variable", Variable::TYPE_SYMBOL);
 		(*framePtr)[var.toString()] = val;
 	}
 }
@@ -47,7 +47,7 @@ Environment::frame::iterator Environment::findVar(const string &var)
 // Define variable
 Variable Environment::defineVariable(const Variable& var, const Variable& val)
 {
-	var.requireType("define", Variable::SYMBOL);
+	var.requireType("define", Variable::TYPE_SYMBOL);
 	(*framePtr)[var.toString()] = val;
 	return VAR_VOID;
 }
@@ -55,7 +55,7 @@ Variable Environment::defineVariable(const Variable& var, const Variable& val)
 // Assign variable
 Variable Environment::assignVariable(const Variable &var, const Variable &val)
 {
-	var.requireType("set!", Variable::SYMBOL);
+	var.requireType("set!", Variable::TYPE_SYMBOL);
 	auto it = findVar(var.toString());
 	it->second = val;
 	return VAR_VOID;
@@ -64,7 +64,7 @@ Variable Environment::assignVariable(const Variable &var, const Variable &val)
 // Lookup variable
 Variable Environment::lookupVariable(const Variable &var)
 {
-	var.requireType("lookup variable", Variable::SYMBOL);
+	var.requireType("lookup variable", Variable::TYPE_SYMBOL);
 	auto it = findVar(var.toString());
 	return it->second;
 }

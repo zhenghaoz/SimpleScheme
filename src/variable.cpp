@@ -19,7 +19,7 @@ using string = std::string;
 ostream& operator<<(ostream& out, const Variable& var)
 {
 	// List
-	if (var == VAR_NULL || var.type == Variable::PAIR) {
+	if (var == VAR_NULL || var.type == Variable::TYPE_PAIR) {
 		out << '(';
 		Variable it = var;
 		bool empty = true;
@@ -38,26 +38,26 @@ ostream& operator<<(ostream& out, const Variable& var)
 	}
 	// Single item
 	switch (var.type) {
-		case Variable::SPEC:
+		case Variable::TYPE_SPEC:
 			if (var == VAR_TRUE)
 				out << "#t";
 			else if (var == VAR_FALSE)
 				out << "#f";
 			break;
-		case Variable::RATIONAL:
+		case Variable::TYPE_RATIONAL:
 			out << *(var.rationalPtr);
 			break;
-		case Variable::DOUBLE:
+		case Variable::TYPE_DOUBLE:
 			out << *(var.doublePtr);
 			break;
-		case Variable::STRING:
+		case Variable::TYPE_STRING:
 			out << '"' << *(var.stringPtr) << '"';
 			break;
-		case Variable::SYMBOL:
+		case Variable::TYPE_SYMBOL:
 			out << *(var.stringPtr);
 			break;
-		case Variable::PRIM:
-		case Variable::COMP:
+		case Variable::TYPE_PRIM:
+		case Variable::TYPE_COMP:
 			out << "#<procedure:" + var.getProcedureName() + ">";
 			break;
 		default:
@@ -82,23 +82,23 @@ void Variable::requireType(const string &caller, int type) const
 string Variable::getTypeName(int type)
 {
 	switch (type) {
-		case DOUBLE:
+		case TYPE_DOUBLE:
 			return "double";
-		case RATIONAL:
+		case TYPE_RATIONAL:
 			return "rational";
-		case RATIONAL | DOUBLE:
+		case TYPE_RATIONAL | TYPE_DOUBLE:
 			return "number";
-		case PAIR:
+		case TYPE_PAIR:
 			return "pair";
-		case STRING:
+		case TYPE_STRING:
 			return "string";
-		case SYMBOL:
+		case TYPE_SYMBOL:
 			return "symbol";
-		case PRIM:
+		case TYPE_PRIM:
 			return "primitive";
-		case COMP:
+		case TYPE_COMP:
 			return "compound";
-		case COMP | PRIM:
+		case TYPE_COMP | TYPE_PRIM:
 			return "procedure";
 		default:
 			return "<unkown>";
@@ -116,8 +116,8 @@ string Variable::toString() const
 
 double Variable::toDouble() const
 {
-	requireType("convert to double", DOUBLE | RATIONAL);
-	if (type == RATIONAL)
+	requireType("convert to double", TYPE_DOUBLE | TYPE_RATIONAL);
+	if (type == TYPE_RATIONAL)
 		return static_cast<double>(*rationalPtr);
 	return *doublePtr;
 }
@@ -136,39 +136,39 @@ bool Variable::isVoid() const
 
 bool Variable::isPair() const
 {
-	return type == PAIR;
+	return type == TYPE_PAIR;
 }
 
 bool Variable::isNumber() const
 {
-	return type & (RATIONAL | DOUBLE);
+	return type & (TYPE_RATIONAL | TYPE_DOUBLE);
 }
 
 bool Variable::isSymbol() const
 {
-	return type == SYMBOL;
+	return type == TYPE_SYMBOL;
 }
 
 bool Variable::isString() const
 {
-	return type == STRING;
+	return type == TYPE_STRING;
 }
 
 bool Variable::isProcedure() const
 {
-	return type & (COMP | PRIM);
+	return type & (TYPE_COMP | TYPE_PRIM);
 }
 
 // Arithmetic operations
 
 Variable operator+(const Variable& lhs, const Variable& rhs)
 {
-	lhs.requireType("+", Variable::DOUBLE | Variable::RATIONAL);
-	rhs.requireType("+", Variable::DOUBLE | Variable::RATIONAL);
+	lhs.requireType("+", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
+	rhs.requireType("+", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
 	switch (lhs.type | rhs.type) {
-		case Variable::DOUBLE:
+		case Variable::TYPE_DOUBLE:
 			return Variable(*lhs.doublePtr + *rhs.doublePtr);
-		case Variable::RATIONAL:
+		case Variable::TYPE_RATIONAL:
 			return Variable(*lhs.rationalPtr + *rhs.rationalPtr);
 		default:
 			return Variable(lhs.toDouble() + rhs.toDouble());
@@ -177,12 +177,12 @@ Variable operator+(const Variable& lhs, const Variable& rhs)
 
 Variable operator-(const Variable& lhs, const Variable& rhs)
 {
-	lhs.requireType("-", Variable::DOUBLE | Variable::RATIONAL);
-	rhs.requireType("-", Variable::DOUBLE | Variable::RATIONAL);
+	lhs.requireType("-", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
+	rhs.requireType("-", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
 	switch (lhs.type | rhs.type) {
-		case Variable::DOUBLE:
+		case Variable::TYPE_DOUBLE:
 			return Variable(*lhs.doublePtr - *rhs.doublePtr);
-		case Variable::RATIONAL:
+		case Variable::TYPE_RATIONAL:
 			return Variable(*lhs.rationalPtr - *rhs.rationalPtr);
 		default:
 			return Variable(lhs.toDouble() - rhs.toDouble());
@@ -191,12 +191,12 @@ Variable operator-(const Variable& lhs, const Variable& rhs)
 
 Variable operator*(const Variable& lhs, const Variable& rhs)
 {
-	lhs.requireType("*", Variable::DOUBLE | Variable::RATIONAL);
-	rhs.requireType("*", Variable::DOUBLE | Variable::RATIONAL);
+	lhs.requireType("*", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
+	rhs.requireType("*", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
 	switch (lhs.type | rhs.type) {
-		case Variable::DOUBLE:
+		case Variable::TYPE_DOUBLE:
 			return Variable(*lhs.doublePtr * *rhs.doublePtr);
-		case Variable::RATIONAL:
+		case Variable::TYPE_RATIONAL:
 			return Variable(*lhs.rationalPtr * *rhs.rationalPtr);
 		default:
 			return Variable(lhs.toDouble() * rhs.toDouble());
@@ -205,14 +205,14 @@ Variable operator*(const Variable& lhs, const Variable& rhs)
 
 Variable operator/(const Variable& lhs, const Variable& rhs)
 {
-	lhs.requireType("/", Variable::DOUBLE | Variable::RATIONAL);
-	rhs.requireType("/", Variable::DOUBLE | Variable::RATIONAL);
+	lhs.requireType("/", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
+	rhs.requireType("/", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
 	switch (lhs.type | rhs.type) {
-		case Variable::DOUBLE:
+		case Variable::TYPE_DOUBLE:
 			if (*rhs.doublePtr == 0)
 				throw Exception("/: division by zero");
 			return Variable(*lhs.doublePtr / *rhs.doublePtr);
-		case Variable::RATIONAL:
+		case Variable::TYPE_RATIONAL:
 			if (*rhs.rationalPtr == 0)
 				throw Exception("/: division by zero");
 			return Variable(*lhs.rationalPtr / *rhs.rationalPtr);
@@ -227,8 +227,8 @@ Variable operator/(const Variable& lhs, const Variable& rhs)
 
 Variable operator-(const Variable& var)
 {
-	var.requireType("-", Variable::DOUBLE | Variable::RATIONAL);
-	if (var.type == Variable::DOUBLE)
+	var.requireType("-", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
+	if (var.type == Variable::TYPE_DOUBLE)
 		return Variable(- *var.doublePtr);
 	return Variable(- *var.rationalPtr);
 }
@@ -237,12 +237,12 @@ Variable operator-(const Variable& var)
 
 bool operator<(const Variable& lhs, const Variable& rhs)
 {
-	lhs.requireType("<", Variable::DOUBLE | Variable::RATIONAL);
-	rhs.requireType("<", Variable::DOUBLE | Variable::RATIONAL);
+	lhs.requireType("<", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
+	rhs.requireType("<", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
 	switch (lhs.type | rhs.type) {
-		case Variable::DOUBLE:
+		case Variable::TYPE_DOUBLE:
 			return *lhs.doublePtr < *rhs.doublePtr;
-		case Variable::RATIONAL:
+		case Variable::TYPE_RATIONAL:
 			return *lhs.rationalPtr < *rhs.rationalPtr;
 		default:
 			return lhs.toDouble() < rhs.toDouble();
@@ -251,12 +251,12 @@ bool operator<(const Variable& lhs, const Variable& rhs)
 
 bool operator>(const Variable& lhs, const Variable& rhs)
 {
-	lhs.requireType(">", Variable::DOUBLE | Variable::RATIONAL);
-	rhs.requireType(">", Variable::DOUBLE | Variable::RATIONAL);
+	lhs.requireType(">", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
+	rhs.requireType(">", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
 	switch (lhs.type | rhs.type) {
-		case Variable::DOUBLE:
+		case Variable::TYPE_DOUBLE:
 			return *lhs.doublePtr > *rhs.doublePtr;
-		case Variable::RATIONAL:
+		case Variable::TYPE_RATIONAL:
 			return *lhs.rationalPtr > *rhs.rationalPtr;
 		default:
 			return lhs.toDouble() > rhs.toDouble();
@@ -265,12 +265,12 @@ bool operator>(const Variable& lhs, const Variable& rhs)
 
 bool operator<=(const Variable& lhs, const Variable& rhs)
 {
-	lhs.requireType("<=", Variable::DOUBLE | Variable::RATIONAL);
-	rhs.requireType("<=", Variable::DOUBLE | Variable::RATIONAL);
+	lhs.requireType("<=", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
+	rhs.requireType("<=", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
 	switch (lhs.type | rhs.type) {
-		case Variable::DOUBLE:
+		case Variable::TYPE_DOUBLE:
 			return *lhs.doublePtr <= *rhs.doublePtr;
-		case Variable::RATIONAL:
+		case Variable::TYPE_RATIONAL:
 			return *lhs.rationalPtr <= *rhs.rationalPtr;
 		default:
 			return lhs.toDouble() <= rhs.toDouble();
@@ -279,12 +279,12 @@ bool operator<=(const Variable& lhs, const Variable& rhs)
 
 bool operator>=(const Variable& lhs, const Variable& rhs)
 {
-	lhs.requireType(">=", Variable::DOUBLE | Variable::RATIONAL);
-	rhs.requireType(">=", Variable::DOUBLE | Variable::RATIONAL);
+	lhs.requireType(">=", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
+	rhs.requireType(">=", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
 	switch (lhs.type | rhs.type) {
-		case Variable::DOUBLE:
+		case Variable::TYPE_DOUBLE:
 			return *lhs.doublePtr >= *rhs.doublePtr;
-		case Variable::RATIONAL:
+		case Variable::TYPE_RATIONAL:
 			return *lhs.rationalPtr >= *rhs.rationalPtr;
 		default:
 			return lhs.toDouble() >= rhs.toDouble();
@@ -300,14 +300,14 @@ bool operator==(const Variable &lhs, const Variable &rhs)
 	if (lhs.type != rhs.type)
 		return false;
 	switch (lhs.type) {
-		case Variable::DOUBLE:
+		case Variable::TYPE_DOUBLE:
 			return *lhs.doublePtr == *rhs.doublePtr;
-		case Variable::RATIONAL:
+		case Variable::TYPE_RATIONAL:
 			return *lhs.rationalPtr == *rhs.rationalPtr;
-		case Variable::STRING:
-		case Variable::SYMBOL:
+		case Variable::TYPE_STRING:
+		case Variable::TYPE_SYMBOL:
 			return *lhs.stringPtr == *rhs.stringPtr;
-		case Variable::PAIR:
+		case Variable::TYPE_PAIR:
 			return lhs.car() == rhs.car()
 					&& lhs.cdr() == rhs.cdr();
 		default:
@@ -324,26 +324,26 @@ bool operator!=(const Variable& lhs, const Variable& rhs)
 
 Variable Variable::car() const
 {
-	requireType("car", Variable::PAIR);
+	requireType("car", Variable::TYPE_PAIR);
 	return pairPtr->first;
 }
 
 Variable Variable::cdr() const
 {
-	requireType("cdr", Variable::PAIR);
+	requireType("cdr", Variable::TYPE_PAIR);
 	return pairPtr->second;
 }
 
 Variable Variable::setCar(const Variable& var) const
 {
-	requireType("set-car!", Variable::PAIR);
+	requireType("set-car!", Variable::TYPE_PAIR);
 	pairPtr->first = var;
 	return VAR_VOID;
 }
 
 Variable Variable::setCdr(const Variable& var) const
 {
-	requireType("set-cdr!", Variable::PAIR);
+	requireType("set-cdr!", Variable::TYPE_PAIR);
 	pairPtr->second = var;
 	return VAR_VOID;
 }
@@ -352,32 +352,32 @@ Variable Variable::setCdr(const Variable& var) const
 
 Variable Variable::operator()(const Variable& arg, const Environment &env)
 {
-	requireType("apply primitive procedure", PRIM);
+	requireType("apply primitive procedure", TYPE_PRIM);
 	return primPtr->func(arg, env);
 }
 
 Variable Variable::getProcedureArgs() const
 {
-	requireType("get procedure args", COMP);
+	requireType("get procedure args", TYPE_COMP);
 	return compPtr->args;
 }
 
 Variable Variable::getProcedureBody() const
 {
-	requireType("get procedure body", COMP);
+	requireType("get procedure body", TYPE_COMP);
 	return compPtr->body;
 }
 
 string Variable::getProcedureName() const
 {
-	requireType("get procedure name", PRIM | COMP);
-	if (type == Variable::PRIM)
+	requireType("get procedure name", TYPE_PRIM | TYPE_COMP);
+	if (type == Variable::TYPE_PRIM)
 		return primPtr->name;
 	return compPtr->name;
 }
 
 Environment Variable::getProcedureEnv() const
 {
-	requireType("get procedure env", COMP);
+	requireType("get procedure env", TYPE_COMP);
 	return compPtr->env;
 }

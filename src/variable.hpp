@@ -20,14 +20,14 @@ public:
 
 	// Type of variable
 	enum Type {
-		RATIONAL = 0x01,
-		DOUBLE 	 = 0x02,
-		STRING 	 = 0x04,
-		SYMBOL   = 0x08,
-		SPEC     = 0x10,
-		PAIR 	 = 0x20,
-		PRIM 	 = 0x40,
-		COMP 	 = 0x80
+		TYPE_RATIONAL 	= 0x01,
+		TYPE_DOUBLE 	= 0x02,
+		TYPE_STRING 	= 0x04,
+		TYPE_SYMBOL  	= 0x08,
+		TYPE_SPEC     	= 0x10,
+		TYPE_PAIR 	 	= 0x20,
+		TYPE_PRIM 	 	= 0x40,
+		TYPE_COMP 	 	= 0x80
 	};
 	
 private:
@@ -65,30 +65,30 @@ private:
 public:
 
 	// Constructor for special
-	Variable(): type(SPEC), refCount(new int(1)) {}
+	Variable(): type(TYPE_SPEC), refCount(new int(1)) {}
 
 	// Constructor for rational
 	Variable(const cpp_rational& rational): 
-		type(RATIONAL), refCount(new int(1)), rationalPtr(new cpp_rational(rational)) {}
+		type(TYPE_RATIONAL), refCount(new int(1)), rationalPtr(new cpp_rational(rational)) {}
 
 	// Constructor for double
 	Variable(double value):
-		type(DOUBLE), refCount(new int(1)), doublePtr(new double(value)) {}
+		type(TYPE_DOUBLE), refCount(new int(1)), doublePtr(new double(value)) {}
 
 	// Constructor for rational, double, string and symbol
 	Variable(const string &str, Type type): type(type), refCount(new int(1))
 	{
 		switch (type) {
 			// Convert string to rational
-			case RATIONAL:
+			case TYPE_RATIONAL:
 				rationalPtr = new cpp_rational(str);
 				break;
 			// Convert string to double
-			case DOUBLE:
+			case TYPE_DOUBLE:
 				doublePtr = new double(std::stod(str));
 				break;
-			case STRING:
-			case SYMBOL:
+			case TYPE_STRING:
+			case TYPE_SYMBOL:
 				stringPtr = new string(str);
 				break;
 			default:
@@ -98,7 +98,7 @@ public:
 
 	// Constructor for pairs
 	Variable(const Variable& lhs, const Variable& rhs): 
-		type(PAIR), refCount(new int(1)), pairPtr(new pair(lhs, rhs)) {}
+		type(TYPE_PAIR), refCount(new int(1)), pairPtr(new pair(lhs, rhs)) {}
 
 	// Constructor for primitive procedure
 	Variable(const string& name, const function& func);
@@ -210,11 +210,11 @@ inline void swap(Variable& lhs, Variable& rhs)
 
 // Constructor for primitive procedure
 inline Variable::Variable(const string& name, const function& func):
-	type(PRIM), refCount(new int(1)), primPtr(new Primitive(name, func)) {}
+	type(TYPE_PRIM), refCount(new int(1)), primPtr(new Primitive(name, func)) {}
 
 // Constructor for compound procedure
 inline Variable::Variable(const string& name, const Variable& args, const Variable& body, const Environment& env):
-	type(COMP), refCount(new int(1)), compPtr(new Compound(name, args, body, env)) {}
+	type(TYPE_COMP), refCount(new int(1)), compPtr(new Compound(name, args, body, env)) {}
 
 // Destructor
 inline Variable::~Variable() {
@@ -225,26 +225,26 @@ inline Variable::~Variable() {
 	// Free memory
 	delete refCount;
 	switch (type) {
-		case RATIONAL:
+		case TYPE_RATIONAL:
 			delete rationalPtr;
 			break;
-		case DOUBLE:
+		case TYPE_DOUBLE:
 			delete doublePtr;
 			break;
-		case STRING:
-		case SYMBOL:
+		case TYPE_STRING:
+		case TYPE_SYMBOL:
 			delete stringPtr;
 			break;
-		case PAIR:
+		case TYPE_PAIR:
 			delete pairPtr;
 			break;
-		case PRIM:
+		case TYPE_PRIM:
 			delete primPtr;
 			break;
-		case COMP:
+		case TYPE_COMP:
 			delete compPtr;		
 			break;
-		case SPEC:
+		case TYPE_SPEC:
 			;
 	}
 }
