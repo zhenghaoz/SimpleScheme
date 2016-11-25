@@ -1,13 +1,11 @@
-#ifndef PRIMITIVE_H
-#define PRIMITIVE_H
+// 
+// Primitive procedure and variable
+// 
+// Author: Zhang Zhenghao (zhangzhenghao@hotmail.com)
+//
+#pragma once
 
-#include "evaldef.hpp"
 #include "variable.hpp"
 
-EVAL_NAMESPACE_BEGIN
-
+// Setup a base environment
 Environment setupEnvironment();
-
-EVAL_NAMESPACE_END
-
-#endif

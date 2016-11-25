@@ -1,245 +1,194 @@
-#include <list>
+// 
+// Primitive procedure and variable
+// 
+// Author: Zhang Zhenghao (zhangzhenghao@hotmail.com)
+//
+#include <boost/multiprecision/cpp_int.hpp>
 #include "evaluator.hpp"
-#include "parser.hpp"
 #include "primitive.hpp"
 
-#define BOOL_TO_VAR(exp)		(exp ? VAR_TRUE : VAR_FALSE)
+#define BOOL_TO_VAR(exp)		((exp) ? VAR_TRUE : VAR_FALSE)
+#define FIRST_ARG(args)			((args).car())
+#define SECOND_ARG(args)		((args).cdr().car())
+#define REST_ARGS(args)			((args).cdr())
 
-EVAL_NAMESPACE_BEGIN
+using boost::multiprecision::cpp_rational;
 
-std::vector<PrimitiveProcdeure> prims = {
+std::vector<Variable> prims = {
 
-	PrimitiveProcdeure("eq?", [](const Variable& args, Environment &env)->Variable{
-		Variable a = args.car();
-		Variable b = args.cdr().car();
-		return BOOL_TO_VAR(a.isEqual(b));
+	Variable("eq?", [](const Variable& args, Environment &env)->Variable{
+		Variable a = FIRST_ARG(args);
+		Variable b = SECOND_ARG(args);
+		return BOOL_TO_VAR(a == b);
 	}),
 
-	PrimitiveProcdeure("null?", [](const Variable& args, Environment &env)->Variable{
-		return BOOL_TO_VAR(args.car().isNull());
+	// Check operation
+
+	Variable("null?", [](const Variable& args, Environment &env)->Variable{
+		return BOOL_TO_VAR(FIRST_ARG(args).isNull());
 	}),
 
-	PrimitiveProcdeure("number?", [](const Variable& args, Environment &env)->Variable{
-		return BOOL_TO_VAR(args.car().isNumber());
+	Variable("number?", [](const Variable& args, Environment &env)->Variable{
+		return BOOL_TO_VAR(FIRST_ARG(args).isNumber());
 	}),
 
-	PrimitiveProcdeure("pair?", [](const Variable& args, Environment &env)->Variable{
-		return BOOL_TO_VAR(args.car().isPair());
+	Variable("pair?", [](const Variable& args, Environment &env)->Variable{
+		return BOOL_TO_VAR(FIRST_ARG(args).isPair());
 	}),
 
-	PrimitiveProcdeure("string?", [](const Variable& args, Environment &env)->Variable{
-		return BOOL_TO_VAR(args.car().isString());
+	Variable("string?", [](const Variable& args, Environment &env)->Variable{
+		return BOOL_TO_VAR(FIRST_ARG(args).isString());
 	}),
 
-	PrimitiveProcdeure("symbol?", [](const Variable& args, Environment &env)->Variable{
-		return BOOL_TO_VAR(args.car().isSymbol());
+	Variable("symbol?", [](const Variable& args, Environment &env)->Variable{
+		return BOOL_TO_VAR(FIRST_ARG(args).isSymbol());
 	}),
 
-	PrimitiveProcdeure("+", [](const Variable& args, Environment &env)->Variable{
-		number val = 0;
+	// Arithemtic operations
+
+	Variable("+", [](const Variable& args, Environment &env)->Variable{
+		Variable val = cpp_rational(0);
 		for (Variable it = args; !it.isNull(); it = it.cdr()) {
 			Variable a = it.car();
-			a.requireType("+", Variable::NUMBER);
-			val += static_cast<number>(a);
+			val = val + a;
 		}
 		return val;
 	}),
 
-	PrimitiveProcdeure("*", [](const Variable& args, Environment &env)->Variable{
-		number val = 1;
+	Variable("*", [](const Variable& args, Environment &env)->Variable{
+		Variable val = cpp_rational(1);
 		for (Variable it = args; !it.isNull(); it = it.cdr()) {
 			Variable a = it.car();
-			a.requireType("*", Variable::NUMBER);
-			val *= static_cast<number>(a);
+			val = val * a;
 		}
 		return val;
 	}),
 
-	PrimitiveProcdeure("-", [](const Variable& args, Environment &env)->Variable{
-		Variable a = args.car();
-		Variable b = args.cdr().car();
-		a.requireType("-", Variable::NUMBER);
-		b.requireType("-", Variable::NUMBER);
-		return static_cast<number>(a) - static_cast<number>(b);
+	Variable("-", [](const Variable& args, Environment &env)->Variable{
+		Variable a = FIRST_ARG(args);
+		if (REST_ARGS(args) == VAR_NULL)
+			return -a;
+		Variable b = SECOND_ARG(args);
+		return a-b;
 	}),
 
-	PrimitiveProcdeure("/", [](const Variable& args, Environment &env)->Variable{
-		Variable a = args.car();
-		Variable b = args.cdr().car();
-		a.requireType("/", Variable::NUMBER);
-		b.requireType("/", Variable::NUMBER);
-		if (static_cast<number>(b) == 0)
-			throw SchemeException("/: divide by zero");
-		return static_cast<number>(a) / static_cast<number>(b);
+	Variable("/", [](const Variable& args, Environment &env)->Variable{
+		Variable a = FIRST_ARG(args);
+		Variable b = SECOND_ARG(args);
+		return a/b;
 	}),
 
-	PrimitiveProcdeure("<", [](const Variable& args, Environment &env)->Variable{
-		Variable a = args.car();
-		Variable b = args.cdr().car();
-		a.requireType("<", Variable::NUMBER);
-		b.requireType("<", Variable::NUMBER);
-		return BOOL_TO_VAR(static_cast<number>(a) < static_cast<number>(b));
+	// Compare operations
+
+	Variable("<", [](const Variable& args, Environment &env)->Variable{
+		Variable a = FIRST_ARG(args);
+		Variable b = SECOND_ARG(args);
+		return BOOL_TO_VAR(a<b);
 	}),
 
-	PrimitiveProcdeure(">", [](const Variable& args, Environment &env)->Variable{
-		Variable a = args.car();
-		Variable b = args.cdr().car();
-		a.requireType(">", Variable::NUMBER);
-		b.requireType(">", Variable::NUMBER);
-		return BOOL_TO_VAR(static_cast<number>(a) > static_cast<number>(b));
+	Variable(">", [](const Variable& args, Environment &env)->Variable{
+		Variable a = FIRST_ARG(args);
+		Variable b = SECOND_ARG(args);
+		return BOOL_TO_VAR(a>b);
 	}),
 
-	PrimitiveProcdeure("=", [](const Variable& args, Environment &env)->Variable{
-		Variable a = args.car();
-		Variable b = args.cdr().car();
-		a.requireType("=", Variable::NUMBER);
-		b.requireType("=", Variable::NUMBER);
-		return BOOL_TO_VAR(static_cast<number>(a) == static_cast<number>(b));
+	Variable("<=", [](const Variable& args, Environment &env)->Variable{
+		Variable a = FIRST_ARG(args);
+		Variable b = SECOND_ARG(args);
+		return BOOL_TO_VAR(a<=b);
 	}),
 
-	PrimitiveProcdeure("remainder", [](const Variable &args, Environment &env)->Variable{
-		Variable a = args.car();
-		Variable b = args.cdr().car();
-		a.requireType("remainder", Variable::NUMBER);
-		b.requireType("remainder", Variable::NUMBER);
-		return static_cast<number>(a) % static_cast<number>(b);
+	Variable(">=", [](const Variable& args, Environment &env)->Variable{
+		Variable a = FIRST_ARG(args);
+		Variable b = SECOND_ARG(args);
+		return BOOL_TO_VAR(a>=b);
 	}),
 
-	PrimitiveProcdeure("not", [](const Variable &args, Environment &env)->Variable{
-		Variable a = args.car();
-		return BOOL_TO_VAR(a.isEqual("false"));
+	Variable("=", [](const Variable& args, Environment &env)->Variable{
+		Variable a = FIRST_ARG(args);
+		Variable b = SECOND_ARG(args);
+		a.requireType("=", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
+		b.requireType("=", Variable::TYPE_DOUBLE | Variable::TYPE_RATIONAL);
+		return BOOL_TO_VAR(a==b);
 	}),
 
-	PrimitiveProcdeure("cons", [](const Variable& args, Environment &env)->Variable{
-		Variable a = args.car();
-		Variable b = args.cdr().car();
+	// Pair operations
+
+	Variable("cons", [](const Variable& args, Environment &env)->Variable{
+		Variable a = FIRST_ARG(args);
+		Variable b = SECOND_ARG(args);
 		return Variable(a, b);
 	}),
 
-	PrimitiveProcdeure("car", [](const Variable &args, Environment &env)->Variable{
-		Variable pair = args.car();
+	Variable("car", [](const Variable& args, Environment& env)->Variable{
+		Variable pair = FIRST_ARG(args);
 		return pair.car();
 	}),
 
-	PrimitiveProcdeure("cdr", [](const Variable &args, Environment &env)->Variable{
-		Variable pair = args.car();
+	Variable("cdr", [](const Variable& args, Environment& env)->Variable{
+		Variable pair = FIRST_ARG(args);
 		return pair.cdr();
 	}),
 
-	PrimitiveProcdeure("set-car!", [](const Variable &args, Environment &env)->Variable{
-		Variable pair = args.car();
-		Variable car = args.cdr().car();
+	Variable("set-car!", [](const Variable& args, Environment& env)->Variable{
+		Variable pair = FIRST_ARG(args);
+		Variable car = SECOND_ARG(args);
 		return pair.setCar(car);
 	}),
 
-	PrimitiveProcdeure("set-cdr!", [](const Variable &args, Environment &env)->Variable{
-		Variable pair = args.car();
-		Variable cdr = args.cdr().car();
+	Variable("set-cdr!", [](const Variable& args, Environment& env)->Variable{
+		Variable pair = FIRST_ARG(args);
+		Variable cdr = SECOND_ARG(args);
 		return pair.setCdr(cdr);
 	}),
 
-	PrimitiveProcdeure("list", [](const Variable &args, Environment &env)->Variable{
-		return args;
+	// I/O procedure
+
+	Variable("display", [](const Variable& args, Environment& env)->Variable{
+		std::cout << FIRST_ARG(args);
+		return VAR_VOID;
 	}),
 
-	PrimitiveProcdeure("length", [](const Variable &args, Environment &env)->Variable{
-		int length = 0;
-		for (Variable it = args.car(); !it.isNull(); it = it.cdr(), length++);
-		return length;
-	}),
-
-	PrimitiveProcdeure("append", [](const Variable &args, Environment &env)->Variable{
-		Variable head = Variable(VAR_NULL, VAR_NULL);
-		Variable tail = head;
-		for (Variable it = args; !it.isNull(); it = it.cdr()) {
-			Variable li = it.car();
-			if (!li.isNull()) {
-				tail.setCdr(li);
-				while (!tail.cdr().isNull())
-					tail = tail.cdr();
-			}
-		}
-		return head.cdr();
-	}),
-
-	PrimitiveProcdeure("map", [](const Variable &args, Environment &env)->Variable{
-		Variable proc = args.car();
-		// get arguments
-		std::list<Variable> argss;
-		for (Variable it = args.cdr(); !it.isNull(); it = it.cdr())
-			argss.push_back(it.car());
-		// apply
-		Variable head = Variable(VAR_NULL, VAR_NULL);
-		Variable tail = head;
-		while (true) {
-			Variable argshead = Variable(VAR_NULL, VAR_NULL);
-			Variable argstail = argshead;
-			bool stop = false;
-			for (auto it = argss.begin(); it != argss.end(); it++)
-				if (it->isNull()) {	// two few arguments
-					stop = true;
-					break;
-				} else {			// success
-					Variable narg = Variable(it->car(), VAR_NULL);
-					argstail.setCdr(narg);
-					argstail = narg;
-					*it = it->cdr();
-				}
-			if (stop) {	// two few arguments
-				break;
-			} else {	// sccuess
-				Variable ntail = Variable(apply(proc, argshead.cdr(), env), VAR_NULL);
-				tail.setCdr(ntail);
-				tail = ntail;
-			}
-		}
-		return head.cdr();
-	}),
-
-	PrimitiveProcdeure("newline", [](const Variable &args, Environment &env)->Variable{
+	Variable("newline", [](const Variable& args, Environment& env)->Variable{
 		std::cout << std::endl;
 		return VAR_VOID;
 	}),
 
-	PrimitiveProcdeure("display", [](const Variable &args, Environment &env)->Variable{
-		std::cout << args.car();
-		return VAR_VOID;
-	}),
-
-	PrimitiveProcdeure("read", [](const Variable &args, Environment &env)->Variable{
+	Variable("read", [](const Variable& args, Environment& env)->Variable{
 		Variable val = VAR_NULL;
 		if (std::cin >> val)
 			return val;
-		throw SchemeException("read: end of file");
+		throw Exception("read: end of file");
 	}),
 
-	PrimitiveProcdeure("error", [](const Variable &args, Environment &env)->Variable{
+	Variable("error", [](const Variable& args, Environment& env)->Variable{
 		std::string msg;
 		for (Variable it = args; !it.isNull(); it = it.cdr())
 			msg += it.car().toString();
-		throw SchemeException(msg);
+		throw Exception(msg);
 	}),
 
-	PrimitiveProcdeure("eval", [](const Variable &args, Environment &env)->Variable{
-		return eval(args.car(), env);
+	// Advanced procedure
+
+	Variable("eval", [](const Variable& args, Environment& env)->Variable{
+		return eval(FIRST_ARG(args), env);
 	}),
 
-	PrimitiveProcdeure("apply", [](const Variable &args, Environment &env)->Variable{
-		return apply(args.car(), args.cdr().car(), env);
+	Variable("apply", [](const Variable& args, Environment& env)->Variable{
+		return apply(FIRST_ARG(args), SECOND_ARG(args), env);
 	})
 };
 
+// Setup a base environment
 Environment setupEnvironment()
 {
 	Environment env;
 	// add constant 
-	env.defineVariable(std::string("true"), VAR_TRUE);
-	env.defineVariable(std::string("false"), VAR_FALSE);
-	env.defineVariable(std::string("null"), VAR_NULL);
+	env.defineVariable("true", VAR_TRUE);
+	env.defineVariable("false", VAR_FALSE);
+	env.defineVariable("null", VAR_NULL);
 	// add primitive procedure
-	for (const PrimitiveProcdeure &prim : prims)
-		env.defineVariable(prim.getName(), prim);
+	for (const Variable &prim : prims)
+		env.defineVariable(prim.getProcedureName(), prim);
 	return env;
 }
-
-EVAL_NAMESPACE_END
