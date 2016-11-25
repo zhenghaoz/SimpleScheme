@@ -30,25 +30,26 @@ class Environment
 	shared_ptr<frame> framePtr;
 
 	// Add variables
-	void addVars(const Variable &vars, const Variable &vals);
+	void addVars(const Variable& vars, const Variable& vals);
 
 	// Find variable
-	frame::iterator findVar(const string &var);
+	frame::iterator findVar(const string& var);
 
 public:
 	
 	// Constructor for top-environment
-	Environment(const Variable &vars, const Variable &vals);
+	Environment(const Variable& vars = VAR_NULL, const Variable& vals = VAR_NULL);
 
 	// Constructor for sub-environment
-	Environment(const Variable &vars, const Variable &vals, const Environment &encloseEnv);
+	Environment(const Variable& vars, const Variable& vals, const Environment& encloseEnv);
 
 	// Assign variable
-	Variable assignVariable(const Variable &var, const Variable &val);
+	Variable assignVariable(const Variable& var, const Variable& val);
 
 	// Define variable
-	Variable defineVariable(const Variable &var, const Variable &val);
+	Variable defineVariable(const Variable& var, const Variable& val);
+	Variable defineVariable(const string& var, const Variable& val);
 
 	// Lookup variable
-	Variable lookupVariable(const Variable &var);
+	Variable lookupVariable(const Variable& var);
 };

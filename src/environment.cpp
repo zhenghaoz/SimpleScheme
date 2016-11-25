@@ -48,7 +48,12 @@ Environment::frame::iterator Environment::findVar(const string &var)
 Variable Environment::defineVariable(const Variable& var, const Variable& val)
 {
 	var.requireType("define", Variable::TYPE_SYMBOL);
-	(*framePtr)[var.toString()] = val;
+	return defineVariable(var.toString(), val);
+}
+
+Variable Environment::defineVariable(const string& var, const Variable& val)
+{
+	(*framePtr)[var] = val;
 	return VAR_VOID;
 }
 
