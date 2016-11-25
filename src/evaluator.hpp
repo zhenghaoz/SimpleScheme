@@ -1,13 +1,14 @@
-#ifndef EVALUATOR_H
-#define EVALUATOR_H
+// 
+// Scheme Evaluator
+// 
+// Author: Zhang Zhenghao (zhangzhenghao@hotmail.com)
+//
+#pragma once
 
 #include "variable.hpp"
 
-EVAL_NAMESPACE_BEGIN
-
+// Evaluate dispatcher
 Variable eval(const Variable &exp, Environment &env);
+
+// Apply procedure
 Variable apply(const Variable &proc, const Variable &vals, Environment &env);
-
-EVAL_NAMESPACE_END
-
-#endif
