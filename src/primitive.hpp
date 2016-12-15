@@ -7,5 +7,9 @@
 
 #include "variable.hpp"
 
-// Setup a base environment
-Environment setupEnvironment();
+namespace Primitive {
+
+	// Setup a base environment
+	Environment setupEnvironment();
+
+}

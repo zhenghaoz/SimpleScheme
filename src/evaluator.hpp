@@ -7,8 +7,12 @@
 
 #include "variable.hpp"
 
-// Evaluate dispatcher
-Variable eval(const Variable &exp, Environment &env);
+namespace Evaluator {
 
-// Apply procedure
-Variable apply(const Variable &proc, const Variable &vals, Environment &env);
+	// Evaluate dispatcher
+	Variable eval(const Variable &exp, Environment &env);
+
+	// Apply procedure
+	Variable apply(const Variable &proc, const Variable &vals, Environment &env);
+
+}

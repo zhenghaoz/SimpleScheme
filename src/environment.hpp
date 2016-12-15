@@ -8,6 +8,7 @@
 #include <map>
 #include <string>
 #include <memory>
+#include "garbage.hpp"
 
 // Declare variable
 class Variable;
@@ -18,7 +19,7 @@ extern const Variable VAR_VOID;
 extern const Variable VAR_TRUE;
 extern const Variable VAR_FALSE;
 
-class Environment
+class Environment: public GarbageObject
 {
 	// Type alias
 	using string = std::string;
@@ -28,6 +29,8 @@ class Environment
 	// Data member
 	shared_ptr<Environment> encloseEnvPtr;
 	shared_ptr<frame> framePtr;
+
+	friend class Variable;
 
 	// Add variables
 	void addVars(const Variable& vars, const Variable& vals);
@@ -52,4 +55,10 @@ public:
 
 	// Lookup variable
 	Variable lookupVariable(const Variable& var);
+
+	// Finalize values
+	void finalize() const override;
+
+	// Scan and tag values in using
+	void scan(int tag) const override;
 };

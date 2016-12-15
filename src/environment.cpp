@@ -73,3 +73,18 @@ Variable Environment::lookupVariable(const Variable &var)
 	auto it = findVar(var.toString());
 	return it->second;
 }
+
+// Finalize values
+void Environment::finalize() const
+{
+	framePtr->clear();
+}
+
+// Scan and tag values in using
+void Environment::scan(int tag) const
+{
+	*gcTag = tag;
+	for (auto it : *framePtr)
+		if (*it.second.gcTag != tag)
+			it.second.scan(tag);
+}

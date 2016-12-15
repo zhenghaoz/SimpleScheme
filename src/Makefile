@@ -5,36 +5,65 @@
 #
 
 #
-# Global variables
+# Global option
 #
-CC			= clang++
-BUILD_DIR	= ../build/
-YACC		= bison -dy
-LEX			= flex
+CC				= clang++
+BUILD_DIR		= ../build/
+LIB_DIR			= ../lib/
+BIN_DIR			= ../bin/
+AR 				= ar -rc
+RANLIB      	= ranlib
+YACC			= bison -dy
+LEX				= flex
 
-CPPFLAGS	= -g -O1 -Wall -std=c++11
+# 
+# Build option
+# 
+CPPFLAGS		= -g -O1 -Wall -std=c++11 $(STATS_OPTION)
+STATS_OPTION	= -DSTATS
+LIB 			= -lsscheme 
 
-SOURCES		= variable.cpp test1.cpp
-OBJECTS		= $(addprefix $(BUILD_DIR), $(SOURCES:.cpp=.o))
-DEPENDENCES	= $(addprefix $(BUILD_DIR), $(SOURCES:.cpp=.d))
+# 
+# Files
+# 
+SOURCES			= variable.cpp environment.cpp evaluator.cpp primitive.cpp garbage.cpp statistic.cpp $(PARSER_SRC)
+OBJECTS			= $(addprefix $(BUILD_DIR), $(SOURCES:.cpp=.o))
+DEPENDENCES		= $(addprefix $(BUILD_DIR), $(SOURCES:.cpp=.d))
+EXECUTE			= $(BIN_DIR)main
+LIBRARY			= $(LIB_DIR)libsscheme.a
+PARSER_SRC		= lexer.cpp parser.cpp
+PARSER_HD		= parser.hpp
 
 # 
 # Build target
 # 
-test1: $(OBJECTS)
-	$(CC) $(CPPFLAGS) $(OBJECTS) -o test1; \
-	./test1
 
-all:
-	echo $(SOURCES)
+all: $(LIBRARY) $(EXECUTE)
+
+get-deps:
+	sudo apt-get install libboost-all-dev
+
+$(EXECUTE): main.cpp $(LIBRARY) 
+	$(CC) $(CPPFLAGS) $(OBJECTS) main.cpp -o $(EXECUTE) -L$(LIB_DIR) $(LIB)
+
+$(LIBRARY): $(OBJECTS)
+	$(AR) $(LIBRARY) $(OBJECTS); \
+	$(RANLIB) $(LIBRARY)
+
+parser.cpp: parser.yacc
+	$(YACC) -o parser.cpp parser.yacc
+
+lexer.cpp: lexer.lex
+	$(LEX) -o lexer.cpp lexer.lex 
 
 clean:
-	rm $(OBJECTS) $(DEPENDENCES)
+	rm $(OBJECTS) $(DEPENDENCES) $(EXECUTE) $(LIBRARY) $(PARSER_SRC) $(PARSER_HD)
+
+-include $(DEPENDENCES)
 
 #
 # Rules
 #
--include $(DEPENDENCES)
 
 $(BUILD_DIR)%.d: %.cpp
 	@set -e; \

@@ -2,7 +2,6 @@
 #include <string>
 #include "variable.hpp"
 #include "parser.hpp"
-Variable yylval;
 }
 
 %option noyywrap
@@ -21,25 +20,25 @@ string 			\"(\\\"|[^\"])*\"
 
 %%
 
-<<EOF>>				return END_OF_FILE;
-\(					return LEFT_PARENTHESES;
-\)					return RIGHT_PARENTHESES;
-'					return QUOTE;
-\.					return DOT;
+<<EOF>>			return END_OF_FILE;
+\(				return LEFT_PARENTHESES;
+\)				return RIGHT_PARENTHESES;
+'				return QUOTE;
+\.				return DOT;
 {string}		{ 
 	yylval = Variable(std::string(YYText()+1, YYText()+YYLeng()-1), Variable::TYPE_STRING); 
 	return STRING; 
 }
 {rational}		{
-	yylval = Variable(std::string(YYText()), Variable::TYPE_RATIONAL);
+	yylval = Variable(YYText(), Variable::TYPE_RATIONAL);
 	return RATIONAL;
 }
 {double}		{
-	yylval = Variable(std::string(YYText()), Variable::TYPE_DOUBLE);
+	yylval = Variable(YYText(), Variable::TYPE_FLOAT);
 	return DOUBLE;
 }
 {symbol}		{
-	yylval = Variable(std::string(YYText()), Variable::TYPE_SYMBOL);
+	yylval = Variable::createSymbol(YYText());
 	return SYMBOL;
 }
 {divider}		return DIVIDER;

@@ -10,24 +10,30 @@
 #include <sstream>
 #include <iostream>
 #include <functional>
+#include <unordered_map>
 #include <boost/multiprecision/cpp_int.hpp>
 #include "exception.hpp"
 #include "environment.hpp"
+#include "garbage.hpp"
 
-class Variable
+class Variable: public GarbageObject
 {
 public:
 
 	// Type of variable
 	enum Type {
 		TYPE_RATIONAL 	= 0x01,
-		TYPE_DOUBLE 	= 0x02,
+		TYPE_FLOAT 		= 0x02,
 		TYPE_STRING 	= 0x04,
 		TYPE_SYMBOL  	= 0x08,
 		TYPE_SPEC     	= 0x10,
 		TYPE_PAIR 	 	= 0x20,
 		TYPE_PRIM 	 	= 0x40,
-		TYPE_COMP 	 	= 0x80
+		TYPE_COMP 	 	= 0x80,
+		// Type class
+		TYPE_TEXT		= 0x0C,
+		TYPE_NUMBER		= 0x03,
+		TYPE_PROCEDURE	= 0xC0
 	};
 	
 private:
@@ -35,6 +41,7 @@ private:
 	// Indent class
 	struct Primitive;
 	struct Compound;
+	friend Environment;
 
 	// Type alias
 	using string = std::string;
@@ -43,7 +50,10 @@ private:
 	using ostringstream = std::ostringstream;
 	using pair = std::pair<Variable, Variable>;
 	using cpp_rational = boost::multiprecision::cpp_rational;
-	using function = std::function<Variable(const Variable&, const Environment&)>;
+	using function = std::function<Variable(const Variable&, Environment&)>;
+
+	// Optimization: constant pool
+	static std::unordered_map<std::string, Variable> pool;
 
 	// Type of variable
 	Type type;
@@ -65,40 +75,19 @@ private:
 public:
 
 	// Constructor for special
-	Variable(): type(TYPE_SPEC), refCount(new int(1)) {}
+	Variable();
 
 	// Constructor for rational
-	Variable(const cpp_rational& rational): 
-		type(TYPE_RATIONAL), refCount(new int(1)), rationalPtr(new cpp_rational(rational)) {}
+	Variable(const cpp_rational& rational);
 
 	// Constructor for double
-	Variable(double value):
-		type(TYPE_DOUBLE), refCount(new int(1)), doublePtr(new double(value)) {}
+	Variable(double value);
 
 	// Constructor for rational, double, string and symbol
-	Variable(const string &str, Type type): type(type), refCount(new int(1))
-	{
-		switch (type) {
-			// Convert string to rational
-			case TYPE_RATIONAL:
-				rationalPtr = new cpp_rational(str);
-				break;
-			// Convert string to double
-			case TYPE_DOUBLE:
-				doublePtr = new double(std::stod(str));
-				break;
-			case TYPE_STRING:
-			case TYPE_SYMBOL:
-				stringPtr = new string(str);
-				break;
-			default:
-				throw Exception("intern error: variable construction error");
-		}
-	}
+	Variable(const string &str, Type type);
 
 	// Constructor for pairs
-	Variable(const Variable& lhs, const Variable& rhs): 
-		type(TYPE_PAIR), refCount(new int(1)), pairPtr(new pair(lhs, rhs)) {}
+	Variable(const Variable& lhs, const Variable& rhs);
 
 	// Constructor for primitive procedure
 	Variable(const string& name, const function& func);
@@ -107,11 +96,7 @@ public:
 	Variable(const string& name, const Variable& args, const Variable& body, const Environment& env);
 
 	// Copy constructor
-	Variable(const Variable& var): type(var.type), refCount(var.refCount), voidPtr(var.voidPtr)
-	{
-		// Increase reference count
-		(*refCount)++;
-	}
+	Variable(const Variable& var);
 
 	// Destructor
 	~Variable();
@@ -120,21 +105,26 @@ public:
 	friend void swap(Variable& lhs, Variable& rhs);
 
 	// Assignment
-	Variable& operator=(Variable var)
-	{
-		swap(*this, var);
-		return *this;
-	}
+	Variable& operator=(Variable var);
+
+	// Optimization: constant pool
+	static Variable createSymbol(const std::string& str);
+
+	// Finalize value
+	void finalize() const override;
+
+	// Scan and tag value in using
+	void scan(int tag) const override;
 
 	// Standard I/O
 	friend ostream& operator<<(ostream& out, const Variable& var);
 	friend istream& operator>>(istream& in, Variable& var);
 
 	// Require type, throw exception if type is wrong
-	void requireType(const string &caller, int type) const;
+	void requireType(const string &caller, Type type) const;
 
 	// Get type name
-	static string getTypeName(int type);
+	static string getTypeName(Type type);
 
 	// Convert operations
 	string toString() const;
@@ -147,6 +137,8 @@ public:
 	bool isNumber() const;
 	bool isSymbol() const;
 	bool isString() const;
+	bool isPrim() const;
+	bool isComp() const;
 	bool isProcedure() const;
 
 	// Arithmetic operations
@@ -165,15 +157,15 @@ public:
 	friend bool operator!=(const Variable& lhs, const Variable& rhs);
 
 	// Pair operations
-	Variable car() const;
-	Variable cdr() const;
+	Variable& car() const;
+	Variable& cdr() const;
 	Variable setCar(const Variable& var) const;
 	Variable setCdr(const Variable& var) const;
 
 	// Procedure operations
-	Variable operator()(const Variable& arg, const Environment& env);
-	Variable getProcedureArgs() const;
-	Variable getProcedureBody() const;
+	Variable operator()(const Variable& arg, Environment& env) const;
+	Variable& getProcedureArgs() const;
+	Variable& getProcedureBody() const;
 	string getProcedureName() const;
 	Environment getProcedureEnv() const;
 };
@@ -197,57 +189,6 @@ struct Variable::Compound
 	Compound(const string& name, const Variable& args, const Variable& body, const Environment& env):
 		name(name), args(args), body(body), env(env) {}
 };
-
-// Inline functions
-
-// Swap two variables
-inline void swap(Variable& lhs, Variable& rhs)
-{
-	std::swap(lhs.type, rhs.type);
-	std::swap(lhs.voidPtr, rhs.voidPtr);
-	std::swap(lhs.refCount, rhs.refCount);
-}
-
-// Constructor for primitive procedure
-inline Variable::Variable(const string& name, const function& func):
-	type(TYPE_PRIM), refCount(new int(1)), primPtr(new Primitive(name, func)) {}
-
-// Constructor for compound procedure
-inline Variable::Variable(const string& name, const Variable& args, const Variable& body, const Environment& env):
-	type(TYPE_COMP), refCount(new int(1)), compPtr(new Compound(name, args, body, env)) {}
-
-// Destructor
-inline Variable::~Variable() {
-	// Decrease reference count
-	(*refCount)--;
-	if (*refCount > 0)
-		return;
-	// Free memory
-	delete refCount;
-	switch (type) {
-		case TYPE_RATIONAL:
-			delete rationalPtr;
-			break;
-		case TYPE_DOUBLE:
-			delete doublePtr;
-			break;
-		case TYPE_STRING:
-		case TYPE_SYMBOL:
-			delete stringPtr;
-			break;
-		case TYPE_PAIR:
-			delete pairPtr;
-			break;
-		case TYPE_PRIM:
-			delete primPtr;
-			break;
-		case TYPE_COMP:
-			delete compPtr;		
-			break;
-		case TYPE_SPEC:
-			;
-	}
-}
 
 // Constant values
 

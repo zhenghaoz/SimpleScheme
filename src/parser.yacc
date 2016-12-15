@@ -4,11 +4,11 @@
 #include "variable.hpp"
 #include "parser.hpp"
 
-yyFlexLexer lexer;			// Lexer
-
-int yylex();				// yylex wrapper
-void yyerror(char const *);
+yyFlexLexer lexer;		
 Variable yypval = VAR_NULL;
+
+int yylex();				
+void yyerror(char const *);
 }
 
 %define api.value.type {Variable}
@@ -59,7 +59,7 @@ seq:
 
 void yyerror(char const *s)
 {
-	fprintf(stderr, "%s\n", s);
+	std::cerr << s << std::endl;
 }
 
 int yylex()

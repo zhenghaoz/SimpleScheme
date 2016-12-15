@@ -33,7 +33,7 @@ public:
 		using std::cerr;
 		using std::endl;
 
-		cerr << msg << endl;
+		cerr << "\x1B[1;31m" << msg << "\x1B[0m" << endl;
 		for (int i = 0; i < trace.size(); i++)
 			if (i == 0)
 				cerr << "\tfrom: " << trace[i] << endl;
