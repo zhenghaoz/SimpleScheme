@@ -3,6 +3,7 @@
 //
 // Author: Zhang Zhenghao (zhangzhenghao@hotmail.com)
 //
+#include <boost/multiprecision/cpp_int.hpp>
 #include "variable.hpp"
 
 #ifdef STATS
@@ -15,10 +16,8 @@ const Variable VAR_VOID		= Variable();
 const Variable VAR_TRUE		= Variable();
 const Variable VAR_FALSE	= Variable();
 
-// Type alias
-using ostream = std::ostream;
-using istream = std::istream;
-using string = std::string;
+using namespace std;
+using namespace boost::multiprecision;
 
 // Parser
 extern int yyparse(std::istream* in, std::ostream* out = 0);
@@ -233,6 +232,14 @@ void Variable::requireType(const string &caller, Type type) const
 {
 	if (this->type & type)
 		return;
+	switch (type) {
+		case TYPE_INTEGER:
+			if (isInteger())
+				return;
+			break;
+		default:
+			;
+	}
 	throw Exception(caller + ": contract violation\n" 
 		+ "\texpected: " + getTypeName(type) + "\n"
 		+ "\tgiven: " + this->toString());
@@ -261,6 +268,8 @@ string Variable::getTypeName(Type type)
 			return "compound";
 		case TYPE_PROCEDURE:
 			return "procedure";
+		case TYPE_INTEGER:
+			return "integer";
 		default:
 			return "<unkown>";
 	}
@@ -303,6 +312,12 @@ bool Variable::isPair() const
 bool Variable::isNumber() const
 {
 	return type & (TYPE_NUMBER);
+}
+
+bool Variable::isInteger() const
+{
+	return type == TYPE_RATIONAL &&
+		denominator(*rationalPtr) == 1;
 }
 
 bool Variable::isSymbol() const
@@ -402,6 +417,38 @@ Variable operator-(const Variable& var)
 	if (var.type == Variable::TYPE_FLOAT)
 		return Variable(- *var.doublePtr);
 	return Variable(- *var.rationalPtr);
+}
+
+Variable remainder(const Variable& lhs, const Variable& rhs)
+{
+	lhs.requireType("remainder", Variable::TYPE_INTEGER);
+	rhs.requireType("remainder", Variable::TYPE_INTEGER);
+	cpp_int a = numerator(*lhs.rationalPtr);
+	cpp_int b = numerator(*rhs.rationalPtr);
+	return Variable(cpp_rational(a%b));
+}
+
+Variable quotient(const Variable& lhs, const Variable& rhs)
+{
+	lhs.requireType("quotient", Variable::TYPE_INTEGER);
+	rhs.requireType("quotient", Variable::TYPE_INTEGER);
+	cpp_int a = numerator(*lhs.rationalPtr);
+	cpp_int b = numerator(*rhs.rationalPtr);
+	return Variable(cpp_rational(a/b));
+}
+
+bool Variable::isEven() const
+{
+	requireType("remainder", Variable::TYPE_INTEGER);
+	cpp_int a = numerator(*rationalPtr);
+	return a % 2 == 0;
+}
+
+bool Variable::isOdd() const
+{
+	requireType("remainder", Variable::TYPE_INTEGER);
+	cpp_int a = numerator(*rationalPtr);
+	return a % 2 == 1;
 }
 
 // Compare operations

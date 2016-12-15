@@ -33,7 +33,9 @@ public:
 		// Type class
 		TYPE_TEXT		= 0x0C,
 		TYPE_NUMBER		= 0x03,
-		TYPE_PROCEDURE	= 0xC0
+		TYPE_PROCEDURE	= 0xC0,
+		// Sub type
+		TYPE_INTEGER	= 0x100
 	};
 	
 private:
@@ -135,6 +137,7 @@ public:
 	bool isVoid() const;
 	bool isPair() const;
 	bool isNumber() const;
+	bool isInteger() const;
 	bool isSymbol() const;
 	bool isString() const;
 	bool isPrim() const;
@@ -147,6 +150,10 @@ public:
 	friend Variable operator*(const Variable& lhs, const Variable& rhs);
 	friend Variable operator/(const Variable& lhs, const Variable& rhs);
 	friend Variable operator-(const Variable& var);
+	friend Variable remainder(const Variable& lhs, const Variable& rhs);
+	friend Variable quotient(const Variable& lhs, const Variable& rhs);
+	bool isEven() const;
+	bool isOdd() const;
 
 	// Compare operations
 	friend bool operator<(const Variable& lhs, const Variable& rhs);
