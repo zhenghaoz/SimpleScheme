@@ -19,8 +19,8 @@ LEX				= flex
 # 
 # Build option
 # 
-CPPFLAGS		= -g -O1 -Wall -std=c++11 $(STATS_OPTION)
-STATS_OPTION	= -DSTATS
+CPPFLAGS		= -g -O1 -Wall -std=c++11 $(OPTIONS) 
+OPTIONS			=
 LIB 			= -lsscheme 
 
 # 
