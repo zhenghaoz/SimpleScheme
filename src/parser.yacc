@@ -1,4 +1,9 @@
 %code top {
+// 
+// Scheme parser
+// 
+// Author: Zhang Zhenghao (zhangzhenghao@hotmail.com)
+//
 #include <iostream>
 #include <FlexLexer.h>
 #include "variable.hpp"

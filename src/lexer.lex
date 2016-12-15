@@ -1,4 +1,9 @@
 %top {
+// 
+// Scheme lexer
+// 
+// Author: Zhang Zhenghao (zhangzhenghao@hotmail.com)
+//
 #include <string>
 #include "variable.hpp"
 #include "parser.hpp"
@@ -10,7 +15,7 @@
 line_comment	\;[^\r\n]*(\r|\n)
 block_comment	\#\|([^\|]|\|[^\#])*\|\#
 comment 		{line_comment}|{block_comment}
-divider 		(\r|\n|" "|{comment})+
+divider 		(\r|\n|\t|" "|{comment})+
 digit			[[:digit:]]
 signed			-?
 rational		{signed}{digit}+(\/{digit}+)?
