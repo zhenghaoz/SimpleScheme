@@ -7,6 +7,14 @@
 #include "variable.hpp"
 #include "exception.hpp"
 
+#ifdef STATS
+#include "statistic.hpp"
+#endif
+
+#ifdef LOG
+#include "log.hpp"
+#endif
+
 // Macro for evaluating
 
 #define TAGGED_LIST(exp, tag)	((exp).isPair() && (exp).car().toString() == (tag))
@@ -71,7 +79,21 @@
 using namespace std;
 using namespace Evaluator;
 
+// Tail
+struct Tail {
+	bool app;
+	Variable proc;
+	Variable args;
+	Environment env;
+	Tail(const Variable& val): app(false), args(val) {}
+	Tail(const Variable& proc, const Variable& args, const Environment& env):
+		app(true), proc(proc), args(args), env(env) {}
+};
+
 namespace {
+
+	// Declare
+	Tail tail(const Variable &expr, Environment &env);
 
 	// Evaluate and
 	Variable evalAnd(const Variable &expr, Environment &env)
@@ -104,7 +126,7 @@ namespace {
 	Variable evalCond(const Variable &expr, Environment &env)
 	{
 		for (Variable clauses = COND_CLUASES(expr); clauses != VAR_NULL; clauses = clauses.cdr()) {
-			Variable clause = clauses.car();
+			const Variable& clause = clauses.car();
 			if (IS_ELSE(clause) || IS_TRUE(eval(COND_PRED(clause), env)))
 				return evalSeq(COND_CONSEQUENCE(clause), env);
 		}
@@ -116,7 +138,7 @@ namespace {
 	{
 		Environment extendEnv = Environment(VAR_NULL, VAR_NULL, env);
 		for (Variable bindings = LET_BINDINGS(expr); bindings != VAR_NULL; bindings = bindings.cdr()) {
-			Variable binding = bindings.car();
+			const Variable& binding = bindings.car();
 			extendEnv.defineVariable(BINDING_VAR(binding), eval(BINDING_VAL(binding), env));
 		}
 		return evalSeq(LET_BODY(expr), extendEnv);
@@ -125,14 +147,75 @@ namespace {
 	// Evaluate arguments
 	Variable evalArgs(const Variable &args, Environment &env)
 	{
-		Variable head = Variable(VAR_NULL, VAR_NULL);
+		const Variable& head = Variable(VAR_NULL, VAR_NULL);
 		Variable tail = head;
 		for (Variable it = args; it != VAR_NULL; it = it.cdr()) {
-			Variable ntail = Variable(eval(it.car(), env), VAR_NULL);
+			const Variable& ntail = Variable(eval(it.car(), env), VAR_NULL);
 			tail.setCdr(ntail);
 			tail = ntail;
 		}
 		return head.cdr();
+	}
+
+	// Find the tail of sequence
+	Tail tailSeq(const Variable &expr, Environment &env)
+	{
+		Variable tl = VAR_NULL;
+		for (Variable it = expr; it != VAR_NULL; it = it.cdr()) {
+			if (tl != VAR_NULL)
+				eval(tl, env);
+			tl = it.car();
+		}
+		return tl == VAR_NULL ? Tail(VAR_VOID) : tail(tl, env);
+	}
+
+	// Find the tail of cond
+	Tail tailCond(const Variable &expr, Environment &env)
+	{
+		for (Variable clauses = COND_CLUASES(expr); clauses != VAR_NULL; clauses = clauses.cdr()) {
+			const Variable& clause = clauses.car();
+			if (IS_ELSE(clause) || IS_TRUE(eval(COND_PRED(clause), env)))
+				return tailSeq(COND_CONSEQUENCE(clause), env);
+		}
+		return Tail(VAR_VOID);
+	}
+
+	// Find the tail of let
+	Tail tailLet(const Variable &expr, Environment &env)
+	{
+		Environment extendEnv = Environment(VAR_NULL, VAR_NULL, env);
+		for (Variable bindings = LET_BINDINGS(expr); bindings != VAR_NULL; bindings = bindings.cdr()) {
+			const Variable& binding = bindings.car();
+			extendEnv.defineVariable(BINDING_VAR(binding), eval(BINDING_VAL(binding), env));
+		}
+		return tailSeq(LET_BODY(expr), extendEnv);
+	}
+
+	// Find the tail
+	Tail tail(const Variable &expr, Environment &env)
+	{
+		#ifdef LOG
+		VERBOSE("tail",expr);
+		#endif
+		if (IS_SELF_EVALUATING(expr)
+			|| IS_VARIABLE(expr)
+			|| IS_QUOTED(expr)
+			|| IS_DEFINE_VAR(expr)
+			|| IS_DEFINE_PROC(expr)
+			|| IS_ASSIGNMENT(expr)
+			|| IS_AND(expr)
+			|| IS_OR(expr)
+			|| IS_LAMBDA(expr))
+			return Tail(eval(expr, env));
+		if (IS_IF(expr))	
+			return IS_TRUE(eval(IF_PRED(expr), env)) ? tail(IF_CON(expr), env) : tail(IF_ALTER(expr), env);
+		if (IS_COND(expr))
+			return tailCond(expr, env);
+		if (IS_LET(expr))
+			return tailLet(expr, env);
+		if (IS_APPLICATION(expr))	
+			return Tail(eval(APPLICATION_NAME(expr), env), evalArgs(APPLICATION_ARGS(expr), env), env);
+		throw Exception(string("tail: can't evaluate ") + expr.toString());
 	}
 
 }
@@ -142,6 +225,9 @@ namespace Evaluator {
 	// Evaluate dispatcher
 	Variable eval(const Variable &expr, Environment &env)
 	{
+		#ifdef LOG
+		VERBOSE("eval",expr);
+		#endif
 		if (IS_SELF_EVALUATING(expr))
 			return expr;
 		if (IS_VARIABLE(expr))
@@ -179,29 +265,37 @@ namespace Evaluator {
 	// Apply procedure
 	Variable apply(const Variable &proc, const Variable &vals, Environment &env)
 	{
-		// Apply primitives
-		if (proc.isPrim()) {
-			try {
-				return proc(vals, env);
-			} catch (Exception e) {
-				e.addTrace(proc.toString());
-				throw e;
+		#ifdef STATS
+		Statistic::applyStart();
+		#endif
+		try {
+			Tail tl = Tail(proc, vals, env);
+			while (tl.app) {
+				const Variable& proc = tl.proc;
+				const Variable& vals = tl.args;
+				Environment& env = tl.env;
+				#ifdef LOG
+				VERBOSE("apply",proc);
+				#endif
+				if (proc.isPrim()) {		// Apply primitives
+					tl = Tail(proc(vals, env));
+				} else if (proc.isComp()) {	// Apply compound
+					const Variable& body = proc.getProcedureBody();
+					const Variable& args = proc.getProcedureArgs();
+					Environment extendEnv = Environment(args, vals, proc.getProcedureEnv());
+					tl = tailSeq(body, extendEnv);
+				} else {					// Exception
+					throw Exception(string("apply: can't apply ") + proc.toString());
+				}
 			}
+			#ifdef STATS
+			Statistic::applyEnd();
+			#endif
+			return tl.args;
+		} catch (Exception e) {
+			e.addTrace(proc.toString());
+			throw e;
 		}
-		// Apply compound
-		if (proc.isComp()) {
-			Variable body = proc.getProcedureBody();
-			Variable args = proc.getProcedureArgs();
-			Environment extendEnv = Environment(args, vals, proc.getProcedureEnv());
-			try {
-				return evalSeq(body, extendEnv);
-			} catch (Exception e) {
-				e.addTrace(proc.toString() + ":" + body.toString());
-				throw e;
-			}
-		}
-		// Exception
-		throw Exception(string("apply: can't apply ") + proc.toString());
 	}
 
 }
