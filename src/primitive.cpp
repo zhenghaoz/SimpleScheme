@@ -3,7 +3,7 @@
 // 
 // Author: Zhang Zhenghao (zhangzhenghao@hotmail.com)
 //
-#include <boost/multiprecision/cpp_int.hpp>
+#include <list>
 #include <cstdlib>
 #include "evaluator.hpp"
 #include "primitive.hpp"
@@ -17,14 +17,15 @@
 
 using boost::multiprecision::cpp_rational;
 using namespace Evaluator;
+using namespace std;
 
 namespace {
 
 	std::vector<Variable> prims = {
 
 		Variable("eq?", [](const Variable& args, Environment &env)->Variable{
-			Variable a = FIRST_ARG(args);
-			Variable b = SECOND_ARG(args);
+			const Variable& a = FIRST_ARG(args);
+			const Variable& b = SECOND_ARG(args);
 			return BOOL_TO_VAR(a == b);
 		}),
 
@@ -50,6 +51,10 @@ namespace {
 			return BOOL_TO_VAR(FIRST_ARG(args).isSymbol());
 		}),
 
+		Variable("integer?", [](const Variable& args, Environment &env)->Variable{
+			return BOOL_TO_VAR(FIRST_ARG(args).isInteger());
+		}),
+
 		// Arithemtic operations
 
 		Variable("+", [](const Variable& args, Environment &env)->Variable{
@@ -71,87 +76,172 @@ namespace {
 		}),
 
 		Variable("-", [](const Variable& args, Environment &env)->Variable{
-			Variable a = FIRST_ARG(args);
+			const Variable& a = FIRST_ARG(args);
 			if (REST_ARGS(args) == VAR_NULL)
 				return -a;
-			Variable b = SECOND_ARG(args);
+			const Variable& b = SECOND_ARG(args);
 			return a-b;
 		}),
 
 		Variable("/", [](const Variable& args, Environment &env)->Variable{
-			Variable a = FIRST_ARG(args);
-			Variable b = SECOND_ARG(args);
+			const Variable& a = FIRST_ARG(args);
+			const Variable& b = SECOND_ARG(args);
 			return a/b;
+		}),
+
+		Variable("remainder", [](const Variable& args, Environment &env)->Variable{
+			const Variable& a = FIRST_ARG(args);
+			const Variable& b = SECOND_ARG(args);
+			return remainder(a,b);
+		}),
+
+		Variable("quotient", [](const Variable& args, Environment &env)->Variable{
+			const Variable& a = FIRST_ARG(args);
+			const Variable& b = SECOND_ARG(args);
+			return quotient(a,b);
+		}),
+
+		Variable("random", [](const Variable& args, Environment& env)->Variable{
+			const Variable& a = cpp_rational(rand());
+			const Variable& b = FIRST_ARG(args);
+			return remainder(a,b);
+		}),
+
+		Variable("even?", [](const Variable& args, Environment& env)->Variable{
+			return BOOL_TO_VAR(FIRST_ARG(args).isEven());
+		}),
+
+		Variable("odd?", [](const Variable& args, Environment& env)->Variable{
+			return BOOL_TO_VAR(FIRST_ARG(args).isOdd());
 		}),
 
 		// Compare operations
 
 		Variable("<", [](const Variable& args, Environment &env)->Variable{
-			Variable a = FIRST_ARG(args);
-			Variable b = SECOND_ARG(args);
+			const Variable& a = FIRST_ARG(args);
+			const Variable& b = SECOND_ARG(args);
 			return BOOL_TO_VAR(a<b);
 		}),
 
 		Variable(">", [](const Variable& args, Environment &env)->Variable{
-			Variable a = FIRST_ARG(args);
-			Variable b = SECOND_ARG(args);
+			const Variable& a = FIRST_ARG(args);
+			const Variable& b = SECOND_ARG(args);
 			return BOOL_TO_VAR(a>b);
 		}),
 
 		Variable("<=", [](const Variable& args, Environment &env)->Variable{
-			Variable a = FIRST_ARG(args);
-			Variable b = SECOND_ARG(args);
+			const Variable& a = FIRST_ARG(args);
+			const Variable& b = SECOND_ARG(args);
 			return BOOL_TO_VAR(a<=b);
 		}),
 
 		Variable(">=", [](const Variable& args, Environment &env)->Variable{
-			Variable a = FIRST_ARG(args);
-			Variable b = SECOND_ARG(args);
+			const Variable& a = FIRST_ARG(args);
+			const Variable& b = SECOND_ARG(args);
 			return BOOL_TO_VAR(a>=b);
 		}),
 
 		Variable("=", [](const Variable& args, Environment &env)->Variable{
-			Variable a = FIRST_ARG(args);
-			Variable b = SECOND_ARG(args);
+			const Variable& a = FIRST_ARG(args);
+			const Variable& b = SECOND_ARG(args);
 			a.requireType("=", Variable::TYPE_NUMBER);
 			b.requireType("=", Variable::TYPE_NUMBER);
 			return BOOL_TO_VAR(a==b);
 		}),
 
+		// Logical operations
+
+		Variable("not", [](const Variable& args, Environment& env)->Variable{
+			return BOOL_TO_VAR(FIRST_ARG(args) == VAR_FALSE);
+		}),
+
 		// Pair operations
 
 		Variable("cons", [](const Variable& args, Environment &env)->Variable{
-			Variable a = FIRST_ARG(args);
-			Variable b = SECOND_ARG(args);
+			const Variable& a = FIRST_ARG(args);
+			const Variable& b = SECOND_ARG(args);
 			return Variable(a, b);
 		}),
 
-		Variable("car", [](const Variable& args, Environment& env)->Variable{
-			Variable pair = FIRST_ARG(args);
-			return pair.car();
-		}),
-
-		Variable("cdr", [](const Variable& args, Environment& env)->Variable{
-			Variable pair = FIRST_ARG(args);
-			return pair.cdr();
-		}),
-
 		Variable("set-car!", [](const Variable& args, Environment& env)->Variable{
-			Variable pair = FIRST_ARG(args);
-			Variable car = SECOND_ARG(args);
+			const Variable& pair = FIRST_ARG(args);
+			const Variable& car = SECOND_ARG(args);
 			return pair.setCar(car);
 		}),
 
 		Variable("set-cdr!", [](const Variable& args, Environment& env)->Variable{
-			Variable pair = FIRST_ARG(args);
-			Variable cdr = SECOND_ARG(args);
+			const Variable& pair = FIRST_ARG(args);
+			const Variable& cdr = SECOND_ARG(args);
 			return pair.setCdr(cdr);
+		}),
+
+		Variable("car", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).car();
+		}),
+
+		Variable("cdr", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).cdr();
 		}),
 
 		// List operations
 
 		Variable("list", [](const Variable& args, Environment& env)->Variable{
 			return args;
+		}),
+
+		Variable("length", [](const Variable& args, Environment& env)->Variable{
+			cpp_rational count = 0;
+			for (Variable it = FIRST_ARG(args); it != VAR_NULL; it = it.cdr())
+				count++;
+			return Variable(count);
+		}),
+
+		Variable("append", [](const Variable &args, Environment &env)->Variable{
+			const Variable& head = Variable(VAR_NULL, VAR_NULL);
+			Variable tail = head;
+			for (Variable it = args; it != VAR_NULL; it = it.cdr()) {
+				const Variable& li = it.car();
+				if (li != VAR_NULL) {
+					tail.setCdr(li);
+					while (tail.cdr() != VAR_NULL)
+						tail = tail.cdr();
+				}
+			}
+			return head.cdr();
+		}),
+
+		Variable("map", [](const Variable &args, Environment &env)->Variable{
+			Variable proc = args.car();
+			// Get arguments
+			list<Variable> argss;
+			for (Variable it = args.cdr(); it != VAR_NULL; it = it.cdr())
+				argss.push_back(it.car());
+			// Apply
+			Variable resultHead = Variable(VAR_NULL, VAR_NULL);
+			Variable resultTail = resultHead;
+			while (true) {
+				Variable argsHead = Variable(VAR_NULL, VAR_NULL);
+				Variable argsTail = argsHead;
+				bool stop = false;
+				for (auto it = argss.begin(); it != argss.end(); it++)
+					if (it->isNull()) {	// Too few arguments
+						stop = true;
+						break;
+					} else {			// Construct argument list
+						Variable newTail = Variable(it->car(), VAR_NULL);
+						argsTail.setCdr(newTail);
+						argsTail = newTail;
+						*it = it->cdr();
+					}
+				if (stop) {				// Too few arguments
+					break;
+				} else {				// Construct result list
+					Variable newTail = Variable(apply(proc, argsHead.cdr(), env), VAR_NULL);
+					resultTail.setCdr(newTail);
+					resultTail = newTail;
+				}
+			}
+			return resultHead.cdr();
 		}),
 
 		// I/O procedure
