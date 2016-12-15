@@ -13,6 +13,8 @@ namespace {
 	int varDestroyed = 0;
 	int varCopyed = 0;
 	int varTraced = 0;
+	int stackDepth = 0;
+	int stackMaxDepth = 0;
 
 }
 
@@ -43,13 +45,26 @@ namespace Statistic {
 		varTraced--;
 	}
 
+	void applyStart()
+	{
+		stackDepth++;
+		if (stackDepth > stackMaxDepth)
+			stackMaxDepth = stackDepth;
+	}
+
+	void applyEnd()
+	{
+		stackDepth--;
+	}
+
 	void printStatistic()
 	{
-		clog << "Variale created   " << varCreated << endl;
-		clog << "Variale copyed    " << varCopyed << endl;
-		clog << "Variale destroyed " << varDestroyed << endl;
-		clog << "Variale alive     " << varCreated - varDestroyed << endl;
-		clog << "Variale traced    " << varTraced << endl;
+		clog << "\x1B[1;33mvariale created   " << varCreated << endl;
+		clog << "variale copyed    " << varCopyed << endl;
+		clog << "variale destroyed " << varDestroyed << endl;
+		clog << "variale alive     " << varCreated - varDestroyed << endl;
+		clog << "variale traced    " << varTraced << endl;
+		clog << "max stack depth   " << stackMaxDepth << "\x1B[0m" << endl;
 	}
 
 }

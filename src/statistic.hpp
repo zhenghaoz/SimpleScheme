@@ -15,5 +15,7 @@ namespace Statistic {
 	void traceVariable();
 	void finalizeVariable();
 	void printStatistic();
-
+	void applyStart();
+	void applyEnd();
+	
 };
