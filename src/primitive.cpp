@@ -179,8 +179,120 @@ namespace {
 			return FIRST_ARG(args).car();
 		}),
 
+		Variable("caar", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).car().car();
+		}),
+
+		Variable("caaar", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).car().car().car();
+		}),
+
+		Variable("caaaar", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).car().car().car().car();
+		}),
+
+		Variable("caaadr", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).car().car().car().cdr();
+		}),
+
+		Variable("caadr", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).car().car().cdr();
+		}),
+
+		Variable("caadar", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).car().car().cdr().car();
+		}),
+
+		Variable("caaddr", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).car().car().cdr().cdr();
+		}),
+
+		Variable("cadr", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).car().cdr();
+		}),
+
+		Variable("cadar", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).car().cdr().car();
+		}),
+
+		Variable("cadaar", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).car().cdr().car().car();
+		}),
+
+		Variable("cadadr", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).car().cdr().car().cdr();
+		}),
+
+		Variable("caddr", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).car().cdr().cdr();
+		}),
+
+		Variable("caddar", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).car().cdr().cdr().car();
+		}),
+
+		Variable("cadddr", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).car().cdr().cdr().cdr();
+		}),
+
 		Variable("cdr", [](const Variable& args, Environment& env)->Variable{
 			return FIRST_ARG(args).cdr();
+		}),
+
+		Variable("cdar", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).cdr().car();
+		}),
+
+		Variable("cdaar", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).cdr().car().car();
+		}),
+
+		Variable("cdaaar", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).cdr().car().car().car();
+		}),
+
+		Variable("cdaadr", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).cdr().car().car().cdr();
+		}),
+
+		Variable("cdadr", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).cdr().car().cdr();
+		}),
+
+		Variable("cdadar", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).cdr().car().cdr().car();
+		}),
+
+		Variable("cdaddr", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).cdr().car().cdr().cdr();
+		}),
+
+		Variable("cddr", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).cdr().cdr();
+		}),
+
+		Variable("cddar", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).cdr().cdr().car();
+		}),
+
+		Variable("cddaar", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).cdr().cdr().car().car();
+		}),
+
+		Variable("cddadr", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).cdr().cdr().car().cdr();
+		}),
+
+		Variable("cdddr", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).cdr().cdr().cdr();
+		}),
+
+		Variable("cdddar", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).cdr().cdr().cdr().car();
+		}),
+
+		Variable("cddddr", [](const Variable& args, Environment& env)->Variable{
+			return FIRST_ARG(args).cdr().cdr().cdr().cdr();
 		}),
 
 		// List operations
