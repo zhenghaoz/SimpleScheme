@@ -8,19 +8,20 @@
 
 using namespace std;
 
-int console()
+int evaluator(istream& in, const string prompt = "")
 {
-	cout << "Welcome to Simple Scheme v0.1" << endl;
+	int errorcnt = 0;
 	Variable var;
 	// Setup initial environment
 	Environment env = Primitive::setupEnvironment();
-	while (cout << '>' && cin >> var) {
+	while (cout << prompt && in >> var) {
 		try {
 			Variable ret = Evaluator::eval(var, env);
 			if (ret != VAR_VOID)
 				cout << ret << endl;
 		} catch (Exception e) {
 			e.printStack();
+			errorcnt++;
 		}
 		// Collect garbage
 		GarbageCollector::collect(env);
@@ -29,39 +30,17 @@ int console()
 		Statistic::printStatistic();
 		#endif
 	}
-	return 0;
-}
-
-int file(istream& in)
-{
-	Variable var;
-	// Setup initial environment
-	Environment env = Primitive::setupEnvironment();
-	while (in >> var) {
-		try {
-			Variable ret = Evaluator::eval(var, env);
-			if (ret != VAR_VOID)
-				cout << ret << endl;
-		} catch (Exception e) {
-			e.printStack();
-		}
-		// Collect garbage
-		GarbageCollector::collect(env);
-		// Print statistic information
-		#ifdef STATS
-		Statistic::printStatistic();
-		#endif
-	}
-	return 0;
+	return errorcnt;
 }
 
 int main(int argc, char const *argv[])
 {
-	if (argc > 1) {
+	if (argc > 1) {	// Read from file
 		ifstream fin(argv[1]);
-		file(fin);
-	} else {
-		console();
+		return evaluator(fin);		
+	} else {		// Read from cin
+		cout << "Welcome to Simple Scheme v0.1" << endl;
+		return evaluator(cin, ">");
 	}
 	return 0;
 }
