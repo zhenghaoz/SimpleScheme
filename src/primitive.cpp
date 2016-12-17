@@ -107,6 +107,12 @@ namespace {
 			return remainder(a,b);
 		}),
 
+		Variable("gcd", [](const Variable& args, Environment& env)->Variable{
+			const Variable& a = cpp_rational(rand());
+			const Variable& b = FIRST_ARG(args);
+			return gcd(a,b);
+		}),
+
 		Variable("even?", [](const Variable& args, Environment& env)->Variable{
 			return BOOL_TO_VAR(FIRST_ARG(args).isEven());
 		}),
@@ -380,6 +386,16 @@ namespace {
 			for (Variable it = args; !it.isNull(); it = it.cdr())
 				msg += it.car().toString();
 			throw Exception(msg);
+		}),
+
+		// Debug procedure
+
+		Variable("assert=", [](const Variable& args, Environment &env)->Variable{
+			const Variable& a = FIRST_ARG(args);
+			const Variable& b = SECOND_ARG(args);
+			if (a != b)
+				throw Exception(string("assert:") + a.toString() + " != " + b.toString());
+			return VAR_VOID;
 		}),
 
 		// Advanced procedure

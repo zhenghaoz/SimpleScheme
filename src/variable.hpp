@@ -152,6 +152,7 @@ public:
 	friend Variable operator-(const Variable& var);
 	friend Variable remainder(const Variable& lhs, const Variable& rhs);
 	friend Variable quotient(const Variable& lhs, const Variable& rhs);
+	friend Variable gcd(const Variable& lhs, const Variable& rhs);
 	bool isEven() const;
 	bool isOdd() const;
 

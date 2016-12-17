@@ -423,8 +423,8 @@ Variable remainder(const Variable& lhs, const Variable& rhs)
 {
 	lhs.requireType("remainder", Variable::TYPE_INTEGER);
 	rhs.requireType("remainder", Variable::TYPE_INTEGER);
-	cpp_int a = numerator(*lhs.rationalPtr);
-	cpp_int b = numerator(*rhs.rationalPtr);
+	const cpp_int& a = numerator(*lhs.rationalPtr);
+	const cpp_int& b = numerator(*rhs.rationalPtr);
 	return Variable(cpp_rational(a%b));
 }
 
@@ -432,22 +432,36 @@ Variable quotient(const Variable& lhs, const Variable& rhs)
 {
 	lhs.requireType("quotient", Variable::TYPE_INTEGER);
 	rhs.requireType("quotient", Variable::TYPE_INTEGER);
+	const cpp_int& a = numerator(*lhs.rationalPtr);
+	const cpp_int& b = numerator(*rhs.rationalPtr);
+	return Variable(cpp_rational(a/b));
+}
+
+Variable gcd(const Variable& lhs, const Variable& rhs)
+{
+	lhs.requireType("gcd", Variable::TYPE_INTEGER);
+	rhs.requireType("gcd", Variable::TYPE_INTEGER);
 	cpp_int a = numerator(*lhs.rationalPtr);
 	cpp_int b = numerator(*rhs.rationalPtr);
-	return Variable(cpp_rational(a/b));
+	while (b) {
+		cpp_int temp = a;
+		a = b;
+		b = temp % b;
+	}
+	return Variable(cpp_rational(a));
 }
 
 bool Variable::isEven() const
 {
 	requireType("remainder", Variable::TYPE_INTEGER);
-	cpp_int a = numerator(*rationalPtr);
+	const cpp_int& a = numerator(*rationalPtr);
 	return a % 2 == 0;
 }
 
 bool Variable::isOdd() const
 {
 	requireType("remainder", Variable::TYPE_INTEGER);
-	cpp_int a = numerator(*rationalPtr);
+	const cpp_int& a = numerator(*rationalPtr);
 	return a % 2 == 1;
 }
 
