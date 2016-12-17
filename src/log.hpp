@@ -3,6 +3,8 @@
 // 
 // Author: Zhang Zhenghao (zhangzhenghao@hotmail.com)
 //
+#pragma once
+
 #include <iostream>
 
 #define VERBOSE(tag,msg)	(std::clog<<"\x1B[1;36m"<<tag<<':'<<msg<<"\x1B[0m"<<std::endl)
