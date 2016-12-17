@@ -79,18 +79,26 @@
 using namespace std;
 using namespace Evaluator;
 
-// Tail
-struct Tail {
-	bool app;
-	Variable proc;
-	Variable args;
-	Environment env;
-	Tail(const Variable& val): app(false), args(val) {}
-	Tail(const Variable& proc, const Variable& args, const Environment& env):
-		app(true), proc(proc), args(args), env(env) {}
-};
-
 namespace {
+
+	// Tail
+	struct Tail {
+
+		// Is application?
+		bool app;
+
+		// Arguments for apply
+		Variable proc;
+		Variable args;
+		Environment env;
+
+		// Constructor for value
+		Tail(const Variable& val): app(false), args(val) {}
+
+		// Constructor for application
+		Tail(const Variable& proc, const Variable& args, const Environment& env):
+			app(true), proc(proc), args(args), env(env) {}
+	};
 
 	// Declare
 	Tail tail(const Variable &expr, Environment &env);
@@ -207,6 +215,8 @@ namespace {
 			|| IS_OR(expr)
 			|| IS_LAMBDA(expr))
 			return Tail(eval(expr, env));
+		if (IS_SEQ(expr))
+			return tailSeq(SEQUENCE(expr), env);
 		if (IS_IF(expr))	
 			return IS_TRUE(eval(IF_PRED(expr), env)) ? tail(IF_CON(expr), env) : tail(IF_ALTER(expr), env);
 		if (IS_COND(expr))
@@ -278,7 +288,11 @@ namespace Evaluator {
 				VERBOSE("apply",proc);
 				#endif
 				if (proc.isPrim()) {		// Apply primitives
+					#ifdef STATS
 					tl = Tail(proc(vals, env));
+					#else
+					return proc(vals, env);
+					#endif
 				} else if (proc.isComp()) {	// Apply compound
 					const Variable& body = proc.getProcedureBody();
 					const Variable& args = proc.getProcedureArgs();
