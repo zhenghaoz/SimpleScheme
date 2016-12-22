@@ -26,7 +26,7 @@ make OPTIONS="-DLOG -DSTATS"
 make test
 ```
 
-Or run `driver.py`  in `test` directory.
+Or run `driver.py`  in `test` directory. All test cases are included in `test` directory. A test case is considered  passed if there is no error.
 
 ## Features
 
@@ -38,7 +38,7 @@ Or run `driver.py`  in `test` directory.
 - Implement a few of primtive procedures
 - Compact with most codes in *SICP*
 
-### Type
+### Types
 
 - Rational
 - Float
@@ -47,7 +47,19 @@ Or run `driver.py`  in `test` directory.
 - Pair
 - Procedure
 
-### Procedure
+### Expressions
+
+- define
+- set!
+- if
+- cond
+- let
+- and/or
+- lambda
+- begin
+- quote
+
+### Procedures
 
 - Check: number?, pair?, string?, etc.
 - Arithmetic: +,-,*,/,etc.
