@@ -86,7 +86,7 @@
 ; test
 (define m (list->tree (list 1 2 3 4 5)))
 (define n (list->tree (list 1 3 5 7 9)))
-(tree->list-1 m)
-(tree->list-1 n)
-(tree->list-1 (union-set m n))
-(tree->list-1 (intersection-set m n))
+(assert= (tree->list-1 m) '(1 2 3 4 5))
+(assert= (tree->list-1 n) '(1 3 5 7 9))
+(assert= (tree->list-1 (union-set m n)) '(1 2 3 4 5 7 9))
+(assert= (tree->list-1 (intersection-set m n)) '(1 3 5))

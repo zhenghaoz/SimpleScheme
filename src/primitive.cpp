@@ -301,6 +301,13 @@ namespace {
 			return FIRST_ARG(args).cdr().cdr().cdr().cdr();
 		}),
 
+		// String operations
+
+		Variable("number->string", [](const Variable& args, Environment& env)->Variable{
+			const Variable num = FIRST_ARG(args);
+			return Variable(num.toString(), Variable::TYPE_STRING);
+		}),
+
 		// List operations
 
 		Variable("list", [](const Variable& args, Environment& env)->Variable{
@@ -389,6 +396,13 @@ namespace {
 		}),
 
 		// Debug procedure
+
+		Variable("assert", [](const Variable& args, Environment& env)->Variable{
+			const Variable& a = FIRST_ARG(args);
+			if (a == VAR_FALSE)
+				throw Exception(string("assert:") + a.toString() + " isn't true");
+			return VAR_VOID;
+		}),
 
 		Variable("assert=", [](const Variable& args, Environment &env)->Variable{
 			const Variable& a = FIRST_ARG(args);

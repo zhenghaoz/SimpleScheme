@@ -21,7 +21,7 @@ LEX				= flex
 # 
 CPPFLAGS		= -g -O1 -Wall -std=c++11 $(OPTIONS) 
 OPTIONS			=
-LIB 			= -lsscheme 
+LIB 			= -lsscheme -lreadline
 
 # 
 # Files
@@ -39,6 +39,9 @@ PARSER_HD		= parser.hpp
 # 
 
 all: $(LIBRARY) $(EXECUTE)
+
+test: $(EXECUTE)
+	../test/driver.py
 
 get-deps:
 	sudo apt-get install libboost-all-dev

@@ -32,9 +32,12 @@
 (define (multiplier p) (car (cdr p)))
 (define (multiplicand p) (car (cdr (cdr p))))
 
-(deriv '(+ x 3) 'x)
-(deriv '(* x y) 'x)
-(deriv '(* (* x y) (+ x 3)) 'x)
+(assert= (deriv '(+ x 3) 'x) '(+ 1 0))
+(assert= (deriv '(* x y) 'x) '(+ (* x 0) (* 1 y)))
+(assert= (deriv '(* (* x y) (+ x 3)) 'x)
+'(+ (* (* x y) (+ 1 0))
+   (* (+ (* x 0) (* 1 y))
+      (+  x 3))))
 
 (define (make-sum a1 a2)
   (cond ((=number? a1 0) a2)
@@ -54,6 +57,6 @@
          (* m1 m2))
         (else (list '* m1 m2))))
 
-(deriv '(+ x 3) 'x)
-(deriv '(* x y) 'x)
-(deriv '(* (* x y) (+ x 3)) 'x)
+(assert= (deriv '(+ x 3) 'x) '1)
+(assert= (deriv '(* x y) 'x) 'y)
+(assert= (deriv '(* (* x y) (+ x 3)) 'x) '(+ (* x y) (* y (+ x 3))))

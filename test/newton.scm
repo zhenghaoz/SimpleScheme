@@ -15,7 +15,7 @@
 (define (sqrt x)
   (sqrt-iter 1.0 x))
 
-(sqrt 9)
-(sqrt (+ 100 37))
-(sqrt (+ (sqrt 2) (sqrt 3)))
-(square (sqrt 1000))
+(assert= (number->string (sqrt 9)) "3.00009")
+(assert= (number->string (sqrt (+ 100 37))) "11.7047")
+(assert= (number->string (sqrt (+ (sqrt 2) (sqrt 3)))) "1.77393")
+(assert= (number->string (square (sqrt 1000))) "1000")

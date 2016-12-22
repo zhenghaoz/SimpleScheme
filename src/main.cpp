@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <readline/readline.h>
 #include "variable.hpp"
 #include "primitive.hpp"
 #include "evaluator.hpp"
@@ -37,7 +38,7 @@ int main(int argc, char const *argv[])
 {
 	if (argc > 1) {	// Read from file
 		ifstream fin(argv[1]);
-		return evaluator(fin);		
+		return evaluator(fin);
 	} else {		// Read from cin
 		cout << "Welcome to Simple Scheme v0.1" << endl;
 		return evaluator(cin, ">");
