@@ -4,12 +4,12 @@ SimpleScheme is a simple scheme interpreter implemented by C++ (C++11). It suppo
 
 ## Compile and Run
 
-The default compiler for this project is Clang and Boost Library is required. If you want to use GCC to compile this project, you have to modify makefile manually.
+The default compiler for this project is Clang and Boost Library, Bison, Flex is required. If you want to use GCC to compile this project, you have to modify makefile manually.
 
 ```bash
+sudo apt-get install build-essential clang flex bison libboost-all-dev
 git clone https://github.com/ZhangZhenghao/SimpleScheme.git
 cd SimpleScheme/src
-make get-deps
 make
 ./build/main
 ```

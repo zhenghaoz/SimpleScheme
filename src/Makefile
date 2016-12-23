@@ -43,9 +43,6 @@ all: $(LIBRARY) $(EXECUTE)
 test: $(EXECUTE)
 	../test/driver.py
 
-get-deps:
-	sudo apt-get install libboost-all-dev
-
 $(EXECUTE): main.cpp $(LIBRARY) 
 	$(CC) $(CPPFLAGS) $(OBJECTS) main.cpp -o $(EXECUTE) -L$(LIB_DIR) $(LIB)
 
