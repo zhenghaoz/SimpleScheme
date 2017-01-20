@@ -20,7 +20,7 @@ LEX				= flex
 # Build option
 # 
 CPPFLAGS		= -g -O1 -Wall -std=c++11 $(OPTIONS) 
-OPTIONS			=
+OPTIONS			= # -DSTAT -DLOG
 LIB 			= -lsscheme -lreadline
 
 # 
@@ -57,7 +57,7 @@ lexer.cpp: lexer.lex
 	$(LEX) -o lexer.cpp lexer.lex 
 
 clean:
-	rm $(OBJECTS) $(DEPENDENCES) $(EXECUTE) $(LIBRARY) $(PARSER_SRC) $(PARSER_HD)
+	rm $(OBJECTS) $(DEPENDENCES) $(LIBRARY) $(EXECUTE) $(PARSER_SRC) $(PARSER_HD)
 
 -include $(DEPENDENCES)
 

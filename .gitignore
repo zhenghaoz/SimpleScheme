@@ -27,11 +27,3 @@
 *.exe
 *.out
 *.app
-
-# Dependencies
-*.d
-
-# Intermediate Files
-src/parser.cpp
-src/parser.hpp
-src/lexer.cpp
